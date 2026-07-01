@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://source-trace.dev/schema/trace-report.schema.json",
+  "title": "TraceReport",
+  "description": "Single normalized artifact the whole client renders from. Describes VISIBLE SOURCING of claims, never truth (invariant I1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "traceReportId",
+    "traceScore",
+    "generatedAt",
+    "engine",
+    "flags",
+    "claims",
+    "sources"
+  ],
+  "properties": {
+    "traceReportId": {
+      "type": "string",
+      "description": "Content-derived id, e.g. 'sha256:...'.",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "traceScore": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Share of claims with adequate VISIBLE support (not truth)."
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["heuristics", "llm", "cached"],
+      "properties": {
+        "heuristics": {
+          "type": "string",
+          "description": "Heuristics engine version, e.g. 'v1'."
+        },
+        "llm": {
+          "type": ["string", "null"],
+          "description": "LLM model id used, or null when the LLM pass did not run (heuristics-only)."
+        },
+        "cached": { "type": "boolean" }
+      }
+    },
+    "flags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "no_visible_sources",
+          "single_source",
+          "dead_link",
+          "low_citation_density"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "claims": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/Claim" }
+    },
+    "sources": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/Source" }
+    }
+  },
+  "definitions": {
+    "ClaimStatus": {
+      "type": "string",
+      "description": "About SOURCING, per invariant I1 — never about truth.",
+      "enum": ["supported", "weak", "unsupported"]
+    },
+    "Span": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "integer", "minimum": 0 },
+        "end": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "Claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "text", "status", "matchedSourceIndexes", "reason", "traceTip", "span"],
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "status": { "$ref": "#/definitions/ClaimStatus" },
+        "matchedSourceIndexes": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 }
+        },
+        "reason": { "type": "string" },
+        "traceTip": { "type": "string" },
+        "span": { "$ref": "#/definitions/Span" }
+      }
+    },
+    "Source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "url", "status", "relevance", "domain"],
+      "properties": {
+        "index": { "type": "integer", "minimum": 0 },
+        "url": { "type": "string", "format": "uri" },
+        "status": {
+          "type": "string",
+          "enum": ["live", "dead", "unknown"]
+        },
+        "relevance": {
+          "type": "string",
+          "enum": ["high", "medium", "low", "unknown"]
+        },
+        "domain": { "type": "string" }
+      }
+    }
+  }
+}

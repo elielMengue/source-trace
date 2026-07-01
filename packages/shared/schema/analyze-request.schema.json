@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://source-trace.dev/schema/analyze-request.schema.json",
+  "title": "AnalyzeRequest",
+  "description": "Request body for POST /v1/analyze.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["answer", "context", "options"],
+  "properties": {
+    "answer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "links"],
+      "properties": {
+        "text": { "type": "string", "maxLength": 100000 },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["url", "anchorText"],
+            "properties": {
+              "url": { "type": "string" },
+              "anchorText": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceSite", "locale", "clientVersion"],
+      "properties": {
+        "sourceSite": {
+          "type": "string",
+          "enum": ["chatgpt", "perplexity", "gemini", "claude"]
+        },
+        "locale": { "type": "string" },
+        "clientVersion": { "type": "string" }
+      }
+    },
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "maxClaims"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["full", "heuristics_only"]
+        },
+        "maxClaims": { "type": "integer", "minimum": 1, "maximum": 100 }
+      }
+    }
+  }
+}
