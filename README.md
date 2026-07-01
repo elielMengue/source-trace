@@ -29,10 +29,24 @@ source-trace/
 
 1. `packages/shared` — Trace Report JSON Schema (contract-first). ✅
 2. `apps/api` — FastAPI skeleton + heuristics + cache; `/v1/analyze` returning heuristics-only. ✅
-3. `apps/extension` — WXT shell + Perplexity adapter + provisional render. 🚧
-4. LLM claim extraction + citation verification; ChatGPT adapter.
-5. Overlay coaching UX + pre-share pause + i18n; privacy toggle.
-6. Anonymous counters → pilot → export evidence.
+3. `apps/extension` — WXT shell + Perplexity/ChatGPT adapters + provisional render + overlay + popup. ✅
+4. LLM claim extraction + citation verification; wire `full`-mode network path. 🚧 next
+5. Overlay coaching UX + pre-share pause + i18n; privacy toggle. ✅ (inline highlights deferred)
+6. Anonymous counters → pilot → export evidence. ✅ (counters shipped; export pending)
+
+See §12 of the design doc for the per-feature checklist.
+
+## Quickstart — extension
+
+```bash
+pnpm install
+pnpm dev:ext        # loads a dev build; open Perplexity or ChatGPT
+pnpm build:ext      # production MV3 bundle in apps/extension/.output/chrome-mv3
+```
+
+The extension talks to `st-api` at `http://127.0.0.1:8000` by default (change in the popup
+later, or via settings). Run the API first for `full` mode; `heuristics_only` mode needs no
+backend and never leaves the browser.
 
 ## Quickstart — API
 

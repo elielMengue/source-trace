@@ -275,21 +275,24 @@ source-trace/
 
 ## 12. Feature list (tiered)
 
+> Status markers: `[x]` done & verified · `[~]` partial (see note) · `[ ]` not started.
+> Kept in sync as features land so progress stays legible as the project grows.
+
 ### Tier 0 — MVP (must ship for submission)
-- [ ] MV3 extension shell (WXT + React), Chrome/Edge
-- [ ] Site adapters: **Perplexity + ChatGPT** (config-driven selectors)
-- [ ] Content extraction: text + links + highlight spans
-- [ ] Instant local heuristics (provisional report)
-- [ ] `st-api /v1/analyze` (stateless) with cache
-- [ ] LLM claim extraction (batched)
-- [ ] Citation matching + **SSRF-safe** source verification
-- [ ] Heuristics: no-source / single-source / dead-link / density flags
-- [ ] Overlay: inline highlights + **"trace this"** actions
-- [ ] **Pre-share pause** on low trace score
-- [ ] Session summary in popup
-- [ ] Locale-aware coaching tips (multilingual, incl. non-English sources)
-- [ ] Privacy mode toggle (`full` ↔ `heuristics_only`) + in-product disclosure
-- [ ] Anonymous local event counters (pilot evidence)
+- [x] MV3 extension shell (WXT + React), Chrome/Edge
+- [x] Site adapters: **Perplexity + ChatGPT** (config-driven selectors)
+- [x] Content extraction: text + links + highlight spans
+- [x] Instant local heuristics (provisional report)
+- [x] `st-api /v1/analyze` (stateless) with cache
+- [ ] LLM claim extraction (batched) — *deterministic stand-in in place; LLM not yet wired*
+- [~] Citation matching + **SSRF-safe** source verification — *deterministic match + SSRF guard done; LLM relevance + live `full`-mode fetch pending*
+- [x] Heuristics: no-source / single-source / dead-link / density flags
+- [~] Overlay: inline highlights + **"trace this"** actions — *coaching panel + trace actions done; true inline highlighting of page DOM deferred*
+- [x] **Pre-share pause** on low trace score
+- [x] Session summary in popup
+- [x] Locale-aware coaching tips (multilingual, incl. non-English sources)
+- [x] Privacy mode toggle (`full` ↔ `heuristics_only`) + in-product disclosure
+- [x] Anonymous local event counters (pilot evidence)
 
 ### Tier 1 — Should (if time allows before deadline)
 - [ ] Source reputation hints (transparent, non-authoritative; "who publishes this?")

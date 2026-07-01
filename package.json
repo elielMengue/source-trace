@@ -1,0 +1,18 @@
+{
+  "name": "source-trace",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Source-Trace monorepo — browser extension + analysis backend that coaches users to trace AI-answer claims.",
+  "packageManager": "pnpm@10.29.3",
+  "scripts": {
+    "dev:ext": "pnpm --filter @source-trace/extension dev",
+    "build:ext": "pnpm --filter @source-trace/extension build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "gen:types": "pnpm --filter @source-trace/shared gen:ts"
+  },
+  "pnpm": {
+    "overrides": {
+      "@vitejs/plugin-react": "^4.3.4"
+    }
+  }
+}
