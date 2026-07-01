@@ -1,0 +1,11 @@
+# Normalize line endings: LF in the repo for all text, so cross-platform diffs stay clean.
+* text=auto eol=lf
+
+# Binary assets never get EOL conversion.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
