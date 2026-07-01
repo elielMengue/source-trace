@@ -30,7 +30,7 @@ source-trace/
 1. `packages/shared` — Trace Report JSON Schema (contract-first). ✅
 2. `apps/api` — FastAPI skeleton + heuristics + cache; `/v1/analyze` returning heuristics-only. ✅
 3. `apps/extension` — WXT shell + Perplexity/ChatGPT adapters + provisional render + overlay + popup. ✅
-4. LLM claim extraction + citation verification; wire `full`-mode network path. 🚧 next
+4. LLM claim extraction + citation verification; wire `full`-mode network path. ✅
 5. Overlay coaching UX + pre-share pause + i18n; privacy toggle. ✅ (inline highlights deferred)
 6. Anonymous counters → pilot → export evidence. ✅ (counters shipped; export pending)
 

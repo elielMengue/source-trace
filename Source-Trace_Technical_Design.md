@@ -284,8 +284,8 @@ source-trace/
 - [x] Content extraction: text + links + highlight spans
 - [x] Instant local heuristics (provisional report)
 - [x] `st-api /v1/analyze` (stateless) with cache
-- [ ] LLM claim extraction (batched) — *deterministic stand-in in place; LLM not yet wired*
-- [~] Citation matching + **SSRF-safe** source verification — *deterministic match + SSRF guard done; LLM relevance + live `full`-mode fetch pending*
+- [x] LLM claim extraction (batched) — *Anthropic extractor (structured outputs, one batched call); graceful fallback to deterministic*
+- [x] Citation matching + **SSRF-safe** source verification — *LLM relevance + live `full`-mode network verify wired; deterministic fallback retained*
 - [x] Heuristics: no-source / single-source / dead-link / density flags
 - [~] Overlay: inline highlights + **"trace this"** actions — *coaching panel + trace actions done; true inline highlighting of page DOM deferred*
 - [x] **Pre-share pause** on low trace score

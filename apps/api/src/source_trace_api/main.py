@@ -16,6 +16,7 @@ from . import __version__
 from .cache import InMemoryCache, content_hash
 from .config import settings
 from .contracts import AnalyzeRequest, TraceReport
+from .llm import build_extractor
 from .pipeline import analyze
 
 log = structlog.get_logger()
@@ -35,6 +36,10 @@ app.add_middleware(
 
 # In-memory cache for dev; swap for a Redis-backed ReportCache in production (§4.5).
 _cache = InMemoryCache()
+
+# Built once (constructing the SDK client per request would be wasteful). None when no
+# LLM key is configured, in which case full mode degrades to heuristics-only (ADR-1).
+_extractor = build_extractor()
 
 
 @app.get("/healthz")
@@ -64,7 +69,7 @@ async def analyze_endpoint(request: AnalyzeRequest) -> TraceReport:
         )
         return report
 
-    report = await analyze(request)
+    report = await analyze(request, extractor=_extractor)
     await _cache.set(key, report.model_dump(mode="json"), settings.cache_ttl_seconds)
     log.info(
         "analyze.computed",

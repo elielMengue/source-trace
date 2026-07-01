@@ -1,13 +1,17 @@
 """Orchestrates the analyze pipeline and assembles the Trace Report (§4.5, §5).
 
-Stateless and idempotent per content hash. The LLM claim extractor is not wired yet;
-the deterministic extractor stands in and the pipeline is written so that swapping it in
-for `full` mode is a localized change (engine.llm flips from null to the model id).
+Stateless and idempotent per content hash. In ``full`` mode an injected LLM extractor
+does batched claim extraction + citation relevance and sources are network-verified; any
+LLM failure falls back to the deterministic path (I3). ``heuristics_only`` never leaves
+the browser's trust boundary, so it never calls the LLM or the network (ADR-1).
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
+
+import structlog
 
 from . import HEURISTICS_VERSION
 from .cache import content_hash
@@ -20,51 +24,96 @@ from .contracts import (
     AnalyzeRequest,
     Claim,
     EngineInfo,
+    Relevance,
+    Source,
     Span,
     TraceReport,
 )
 from .heuristics import classify_claim, compute_flags, compute_trace_score
+from .llm import ClaimExtractor
 from .verifier import verify_links
 
+log = structlog.get_logger()
 
-async def analyze(request: AnalyzeRequest) -> TraceReport:
+
+@dataclass
+class _Candidate:
+    """A claim before status/tip assignment — the common shape both paths produce."""
+
+    text: str
+    start: int
+    end: int
+    matched_indexes: list[int] = field(default_factory=list)
+    relevance: Relevance = Relevance.unknown
+
+
+def _deterministic_candidates(text: str, links, max_claims: int) -> list[_Candidate]:
+    out: list[_Candidate] = []
+    for s in extract_claims(text, max_claims):
+        matched = match_claim_to_links(s.text, links)
+        out.append(_Candidate(text=s.text, start=s.start, end=s.end, matched_indexes=matched))
+    return out
+
+
+async def analyze(request: AnalyzeRequest, extractor: ClaimExtractor | None = None) -> TraceReport:
     answer = request.answer
     opts = request.options
     locale = request.context.locale
 
-    # Full mode would additionally call the LLM extractor and set engine.llm; until that
-    # is wired, both modes run the deterministic path. Network verification only runs in
-    # full mode (heuristics-only never leaves the browser's trust boundary — ADR-1).
+    # full mode may use the LLM + network; heuristics_only never leaves the browser (ADR-1).
+    use_llm = opts.mode == AnalyzeMode.full and extractor is not None
     network = opts.mode == AnalyzeMode.full and settings.llm_api_key is not None
-    llm_model = settings.llm_model if network else None
 
-    extracted = extract_claims(answer.text, opts.maxClaims)
     sources = await verify_links(answer.links, network=network)
 
-    matched_per_claim: list[list[int]] = [
-        match_claim_to_links(c.text, answer.links) for c in extracted
-    ]
+    candidates: list[_Candidate] = []
+    llm_model: str | None = None
+    if use_llm:
+        try:
+            llm_claims, llm_model = await extractor.extract(
+                answer.text, answer.links, opts.maxClaims, locale
+            )
+            candidates = [
+                _Candidate(
+                    text=c.text,
+                    start=c.start,
+                    end=c.end,
+                    matched_indexes=c.matched_indexes,
+                    relevance=c.relevance,
+                )
+                for c in llm_claims
+            ]
+        except Exception as exc:  # graceful degradation (I3) — never fail the request
+            log.warning("analyze.llm_failed", error=str(exc))
+            llm_model = None
+            candidates = []
+
+    if not candidates:  # deterministic path (heuristics_only, no extractor, or LLM failure)
+        candidates = _deterministic_candidates(answer.text, answer.links, opts.maxClaims)
+
+    # LLM-provided relevance enriches the matched sources (take the strongest per source).
+    _apply_relevance(sources, candidates)
 
     claims: list[Claim] = []
     statuses = []
-    for i, (sentence, matched) in enumerate(zip(extracted, matched_per_claim, strict=True)):
-        status, reason = classify_claim(matched, sources)
+    for i, cand in enumerate(candidates):
+        status, reason = classify_claim(cand.matched_indexes, sources)
         statuses.append(status)
         claims.append(
             Claim(
                 id=f"c{i + 1}",
-                text=sentence.text,
+                text=cand.text,
                 status=status,
-                matchedSourceIndexes=matched,
+                matchedSourceIndexes=cand.matched_indexes,
                 reason=reason,
-                traceTip=trace_tip(sentence.text, status, locale),
-                span=Span(start=sentence.start, end=sentence.end),
+                traceTip=trace_tip(cand.text, status, locale),
+                span=Span(start=cand.start, end=cand.end),
             )
         )
 
     flags = compute_flags(
         num_claims=len(claims),
-        matched_per_claim=matched_per_claim,
+        matched_per_claim=[c.matched_indexes for c in candidates],
         sources=sources,
         num_links=len(answer.links),
     )
@@ -79,3 +128,23 @@ async def analyze(request: AnalyzeRequest) -> TraceReport:
         claims=claims,
         sources=sources,
     )
+
+
+_RELEVANCE_RANK = {
+    Relevance.unknown: 0,
+    Relevance.low: 1,
+    Relevance.medium: 2,
+    Relevance.high: 3,
+}
+
+
+def _apply_relevance(sources: list[Source], candidates: list[_Candidate]) -> None:
+    """Set each source's relevance to the strongest relevance any claim assigned it."""
+    best: dict[int, Relevance] = {}
+    for cand in candidates:
+        for idx in cand.matched_indexes:
+            if _RELEVANCE_RANK[cand.relevance] > _RELEVANCE_RANK.get(best.get(idx, Relevance.unknown), 0):
+                best[idx] = cand.relevance
+    for src in sources:
+        if src.index in best:
+            src.relevance = best[src.index]
