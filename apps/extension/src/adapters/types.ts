@@ -17,6 +17,10 @@ export interface SiteAdapter {
 export interface AdapterSelectors {
   /** Elements that contain a rendered AI answer. */
   answer: string;
-  /** Anchor elements to treat as cited links, scoped within an answer node. */
+  /** Cited-source elements, scoped within an answer node. May be an anchor itself
+   * (ChatGPT) or a wrapper containing one (Perplexity's `.citation` chip). */
   citation: string;
+  /** When true, citation elements are UI chips (e.g. Perplexity's "tangente-mag +1")
+   * whose labels are not prose and must be stripped from the extracted claim text. */
+  citationsAreChips?: boolean;
 }

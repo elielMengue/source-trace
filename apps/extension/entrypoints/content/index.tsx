@@ -49,7 +49,12 @@ export default defineContentScript({
     const analyze = debounce(async () => {
       const nodes = adapter.findAnswerNodes(document);
       if (nodes.length === 0) return; // nothing to analyze yet — stay silent
-      const node = nodes[nodes.length - 1]!; // most recent answer
+      // Adapters may match several blocks (e.g. Perplexity marks each list item as
+      // `.prose` too). The real answer is the one with the most text — picking the
+      // last DOM node grabbed a 10-char bullet and starved the pipeline.
+      const node = nodes.reduce((a, b) =>
+        (b.innerText ?? "").length > (a.innerText ?? "").length ? b : a,
+      );
       const extraction: Extraction = adapter.extract(node);
       if (extraction.text.length < 40 || extraction.text === lastText) return;
       lastText = extraction.text;
