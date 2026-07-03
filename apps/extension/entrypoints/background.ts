@@ -32,7 +32,7 @@ export default defineBackground(() => {
           // heuristics_only never leaves the browser (ADR-1): no network call at all.
           if (settings.mode === "heuristics_only") return localReport(m.extraction);
 
-          const key = cacheKey(m, settings.locale);
+          const key = await cacheKey(m, settings.locale);
           const hit = cache.get(key);
           if (hit) return { ...hit, engine: { ...hit.engine, cached: true } };
 
@@ -62,8 +62,14 @@ export default defineBackground(() => {
   }
 });
 
-function cacheKey(m: Extract<Message, { kind: "ANALYZE" }>, locale: string): string {
+/** SHA-256 of the content+params — never store answer text as a key, even in the
+ * ephemeral in-memory worker cache (consistent with the API's "hashes only" principle). */
+async function cacheKey(m: Extract<Message, { kind: "ANALYZE" }>, locale: string): Promise<string> {
   const links = m.extraction.links.map((l) => l.url).join("|");
   const citations = m.extraction.citations.map((c) => `${c.pos}:${c.url ?? ""}`).join("|");
-  return `${locale}::${m.extraction.text}::${links}::${citations}`;
+  const payload = `${locale}::${m.extraction.text}::${links}::${citations}`;
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }

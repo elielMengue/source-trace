@@ -27,9 +27,16 @@ app = FastAPI(
     summary="Source-Trace analysis backend — returns a normalized Trace Report.",
 )
 
+# Pin to configured extension IDs in production; otherwise accept only well-formed
+# unpacked-extension origins (32 chars a–p) — never a blanket `chrome-extension://.*`.
+_cors_origin = (
+    {"allow_origins": [f"chrome-extension://{i}" for i in settings.allowed_extension_ids]}
+    if settings.allowed_extension_ids
+    else {"allow_origin_regex": r"^chrome-extension://[a-p]{32}$"}
+)
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"^chrome-extension://.*$",
+    **_cors_origin,
     allow_methods=["POST", "GET"],
     allow_headers=["content-type"],
 )

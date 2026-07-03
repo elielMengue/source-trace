@@ -31,8 +31,8 @@ source-trace/
 2. `apps/api` — FastAPI skeleton + heuristics + cache; `/v1/analyze` returning heuristics-only. ✅
 3. `apps/extension` — WXT shell + Perplexity/ChatGPT adapters + provisional render + overlay + popup. ✅
 4. LLM claim extraction + citation verification; wire `full`-mode network path. ✅
-5. Overlay coaching UX + pre-share pause + i18n; privacy toggle. ✅ (inline highlights deferred)
-6. Anonymous counters → pilot → export evidence. ✅ (counters shipped; export pending)
+5. Overlay coaching UX + pre-share pause + i18n; privacy toggle + inline DOM highlighting (CSS Custom Highlight API). ✅
+6. Anonymous counters → pilot → export evidence. ✅ counters shipped · ⏳ aggregate export is post-pilot.
 
 See §12 of the design doc for the per-feature checklist.
 

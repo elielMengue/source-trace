@@ -8,8 +8,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="ST_", env_file=".env", extra="ignore")
 
-    # CORS: only the extension origin(s) may call the API (§8).
-    allowed_origins: list[str] = ["chrome-extension://*"]
+    # CORS (§8): pin to specific published extension IDs in production via
+    # ST_ALLOWED_EXTENSION_IDS (comma/JSON list of 32-char ids). When empty (dev), we
+    # fall back to accepting any well-formed unpacked-extension origin — never `*`.
+    allowed_extension_ids: list[str] = []
 
     # Cache
     cache_ttl_seconds: int = 7 * 24 * 3600  # 7d (§4.5)

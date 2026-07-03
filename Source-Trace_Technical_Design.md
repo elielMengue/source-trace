@@ -205,7 +205,7 @@ Local heuristics paint instantly; the authoritative report reconciles when it ar
 `status ∈ {supported, weak, unsupported}` measures visible citation support only. This is the architectural encoding of **I1** and keeps us clear of defamation/authority risks and of the decolonial "trusted by whom?" trap.
 
 **ADR-4 — Remote *config*, not remote *code*.**
-Selectors and coaching templates are fetched as data so we can react to site changes fast, staying MV3-compliant (no remote code execution).
+Selectors and coaching templates are kept as **data** (the `AdapterSelectors` interface), so a fix is a config change, not a code rewrite — and the design is MV3-compliant (no remote code execution). *Status: selectors currently ship embedded in the build; the remote hot-swap fetch is roadmap. Demo mitigation for DOM drift: a recorded walkthrough + a local static HTML fixture that mimics an answer.*
 
 **ADR-5 — Guarded fetch for source verification.**
 Fetching arbitrary URLs from untrusted AI output is a live SSRF vector; it goes through a hardened fetcher (§8), never a naive `httpx.get`.
@@ -215,11 +215,11 @@ Fetching arbitrary URLs from untrusted AI output is a live SSRF vector; it goes 
 ## 8. Security & privacy
 
 - **SSRF-safe verifier:** allow only `http(s)`, resolve DNS and **block private/loopback/link-local ranges**, cap redirects (≤3), timeout (≤3s), `HEAD` first, size cap, no auth headers forwarded.
-- **No content at rest:** answer text is processed transiently; only content **hashes** are cached (for dedupe), never plaintext. No content DB.
+- **No content at rest:** answer text is processed transiently; only content **hashes** are cached (for dedupe), never plaintext. No content DB. *Cache is in-memory by default (dev); a Redis-backed `ReportCache` drops in behind the same Protocol for multi-worker prod.*
 - **Zero-retention LLM:** provider configured for no-logging/no-training; documented in the privacy notice.
-- **Abuse controls:** per-client rate limiting (anonymous rotating token) via Redis; request size caps; `maxClaims` bound.
+- **Abuse controls:** request size cap (`text` ≤ 100k via schema) and `maxClaims` bound are enforced today. *Per-client rate limiting (anonymous rotating token, Redis-backed) is **post-pilot** — not in the current build.*
 - **Extension hardening:** minimal `host_permissions` (only the supported AI sites + the API origin), strict CSP, no `eval`, typed message passing to prevent injection between contexts.
-- **CORS:** API allows only the extension origin.
+- **CORS:** API pins to configured published extension id(s) (`ST_ALLOWED_EXTENSION_IDS`); with none set (dev) it accepts only well-formed unpacked-extension origins (`chrome-extension://[a-p]{32}`), never a blanket wildcard.
 
 ---
 
