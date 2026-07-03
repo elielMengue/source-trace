@@ -13,7 +13,11 @@ export async function analyze(
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      answer: { text: extraction.text, links: extraction.links },
+      answer: {
+        text: extraction.text,
+        links: extraction.links,
+        citations: extraction.citations,
+      },
       context: { sourceSite: ctx.sourceSite, locale: ctx.locale, clientVersion },
       options: { mode: ctx.mode, maxClaims },
     }),

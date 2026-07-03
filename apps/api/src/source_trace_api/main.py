@@ -55,6 +55,7 @@ async def analyze_endpoint(request: AnalyzeRequest) -> TraceReport:
         request.answer.links,
         request.context.locale,
         request.options.mode,
+        request.answer.citations,
     )
 
     cached = await _cache.get(key)

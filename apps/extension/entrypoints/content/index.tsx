@@ -9,6 +9,7 @@ import "../../src/ui/overlay.css";
 
 const PRE_SHARE_THRESHOLD = 0.5;
 const DEBOUNCE_MS = 800;
+const MIN_ANSWER_CHARS = 40; // below this a block is a fragment (bullet, label), not an answer
 
 export default defineContentScript({
   matches: [
@@ -49,14 +50,17 @@ export default defineContentScript({
     const analyze = debounce(async () => {
       const nodes = adapter.findAnswerNodes(document);
       if (nodes.length === 0) return; // nothing to analyze yet — stay silent
-      // Adapters may match several blocks (e.g. Perplexity marks each list item as
-      // `.prose` too). The real answer is the one with the most text — picking the
-      // last DOM node grabbed a 10-char bullet and starved the pipeline.
-      const node = nodes.reduce((a, b) =>
-        (b.innerText ?? "").length > (a.innerText ?? "").length ? b : a,
-      );
+      // Adapters may match several blocks: sub-items (Perplexity marks each list bullet
+      // `.prose` too) AND, in a multi-turn thread, every past answer. Take the LAST node
+      // with substantial text — the most recent real answer — which skips short bullets
+      // yet still re-analyzes each follow-up (picking the globally-longest node froze
+      // analysis on the first, longest answer of the conversation).
+      const substantial = nodes.filter((n) => (n.innerText ?? "").length >= MIN_ANSWER_CHARS);
+      const node = (substantial.length ? substantial : nodes)[
+        (substantial.length ? substantial : nodes).length - 1
+      ]!;
       const extraction: Extraction = adapter.extract(node);
-      if (extraction.text.length < 40 || extraction.text === lastText) return;
+      if (extraction.text.length < MIN_ANSWER_CHARS || extraction.text === lastText) return;
       lastText = extraction.text;
 
       // I3: paint provisional (local) immediately, then reconcile with the authoritative report.

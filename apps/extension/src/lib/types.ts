@@ -18,6 +18,9 @@ export interface Extraction {
   links: { url: string; anchorText: string }[];
   /** Char spans (into `text`) the overlay can highlight without re-parsing. */
   spans: { start: number; end: number }[];
+  /** Positional citations (inline source chips). `pos` is an offset into `text`;
+   * `url` is present only when the chip exposes its link in the DOM. */
+  citations: { pos: number; url?: string }[];
 }
 
 /**

@@ -46,11 +46,26 @@ function matchLinks(claim: string, links: Extraction["links"]): number[] {
   return matched;
 }
 
+const STATUS_WEIGHT: Record<ClaimStatus, number> = { supported: 1, weak: 0.5, unsupported: 0 };
+
 export function localReport(extraction: Extraction, maxClaims = 20): ProvisionalReport {
-  const { text, links } = extraction;
+  const { text, links, citations } = extraction;
   const sentences = splitSentences(text).filter((s) => isClaimLike(s.text)).slice(0, maxClaims);
 
-  const sources: Source[] = links.map((l, i) => ({
+  // Unified sources: cited links first, then positional-citation URLs (deduped by URL),
+  // mirroring the backend so source indexes line up between provisional and authoritative.
+  const urlToIndex = new Map<string, number>();
+  const unified: Extraction["links"] = [];
+  const addUrl = (url: string, anchorText: string) => {
+    if (!urlToIndex.has(url)) {
+      urlToIndex.set(url, unified.length);
+      unified.push({ url, anchorText });
+    }
+  };
+  for (const l of links) addUrl(l.url, l.anchorText);
+  for (const c of citations) if (c.url) addUrl(c.url, "");
+
+  const sources: Source[] = unified.map((l, i) => ({
     index: i,
     url: l.url,
     status: "unknown",
@@ -58,28 +73,61 @@ export function localReport(extraction: Extraction, maxClaims = 20): Provisional
     domain: safeDomain(l.url),
   }));
 
+  // Attach each positional citation to the claim it sits in or trails (nearest claim
+  // whose start is at or before the chip) — same rule as the backend.
+  const assigned = sentences.map(() => ({ idx: new Set<number>(), has: false }));
+  for (const c of citations) {
+    let target = -1;
+    for (let i = 0; i < sentences.length; i++) {
+      const start = sentences[i]!.start;
+      if (start <= c.pos && (target === -1 || start > sentences[target]!.start)) target = i;
+    }
+    if (target === -1) continue;
+    assigned[target]!.has = true;
+    if (c.url) {
+      const idx = urlToIndex.get(c.url);
+      if (idx !== undefined) assigned[target]!.idx.add(idx);
+    }
+  }
+
   const claims: Claim[] = sentences.map((s, i) => {
-    const matched = matchLinks(s.text, links);
-    const status: ClaimStatus = matched.length ? "weak" : "unsupported";
+    const matched = Array.from(
+      new Set([...matchLinks(s.text, unified), ...assigned[i]!.idx]),
+    ).sort((a, b) => a - b);
+    const hasChip = assigned[i]!.has;
+    // Local liveness is always unknown, so a sourced claim is at best "weak" (I3): the
+    // background's authoritative report can only upgrade it to "supported" (ADR-2).
+    const status: ClaimStatus = matched.length || hasChip ? "weak" : "unsupported";
     return {
       id: `p${i + 1}`,
       text: s.text,
       status,
       matchedSourceIndexes: matched,
-      reason: matched.length ? "A source is cited (unverified locally)." : "No citation found yet.",
-      traceTip: matched.length ? "Open the cited source and confirm it." : "Look for a primary source for this.",
+      reason: matched.length
+        ? "A source is cited (unverified locally)."
+        : hasChip
+          ? "A source is cited here; its link isn't exposed on the page."
+          : "No citation found yet.",
+      traceTip:
+        matched.length || hasChip
+          ? "Open the cited source and confirm it."
+          : "Look for a primary source for this.",
       span: { start: s.start, end: s.end },
     };
   });
 
-  const supported = claims.filter((c) => c.matchedSourceIndexes.length).length;
-  const score = claims.length === 0 ? 1 : Math.round((supported / claims.length) * 1000) / 1000;
+  const sourced = claims.filter((c) => c.status !== "unsupported").length;
+  const score =
+    claims.length === 0
+      ? 1
+      : Math.round((claims.reduce((a, c) => a + STATUS_WEIGHT[c.status], 0) / claims.length) * 10000) /
+        10000;
 
   const flags: TraceFlag[] = [];
-  if (links.length === 0) flags.push("no_visible_sources");
+  if (unified.length === 0) flags.push("no_visible_sources");
   const domains = new Set(sources.map((s) => s.domain).filter(Boolean));
-  if (links.length > 0 && domains.size === 1) flags.push("single_source");
-  if (claims.length > 0 && supported / claims.length < 0.5) flags.push("low_citation_density");
+  if (unified.length > 0 && domains.size === 1) flags.push("single_source");
+  if (claims.length > 0 && sourced / claims.length < 0.5) flags.push("low_citation_density");
 
   return {
     provisional: true,

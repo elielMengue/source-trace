@@ -62,6 +62,10 @@ export interface AnalyzeRequest {
   answer: {
     text: string;
     links: { url: string; anchorText: string }[];
+    /** Positional in-answer citations (e.g. Perplexity chips). `pos` is a char offset
+     * into `text`; `url` is optional (some chips expose their link only on interaction).
+     * Presence alone marks a claim as visibly sourced. */
+    citations?: { pos: number; url?: string }[];
   };
   context: {
     sourceSite: SourceSite;

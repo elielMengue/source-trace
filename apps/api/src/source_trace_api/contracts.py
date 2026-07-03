@@ -65,9 +65,19 @@ class Link(_Model):
     anchorText: str
 
 
+class Citation(_Model):
+    """A positional in-answer citation (e.g. a Perplexity chip). ``pos`` is a char
+    offset into the answer text; ``url`` is optional because some chips only expose
+    their link on interaction. Presence alone marks a claim as visibly sourced (I1)."""
+
+    pos: int = Field(ge=0)
+    url: str | None = None
+
+
 class Answer(_Model):
     text: str = Field(max_length=100_000)
     links: list[Link] = Field(default_factory=list)
+    citations: list[Citation] = Field(default_factory=list)
 
 
 class RequestContext(_Model):

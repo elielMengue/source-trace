@@ -11,10 +11,12 @@ export const perplexityAdapter: SiteAdapter = {
   selectors: {
     // Answer prose blocks. Perplexity renders answers as prose containers.
     answer: "[class*='prose'], .prose",
-    // Perplexity wraps each inline source in a `.citation` chip (name + "+N" badge);
-    // only some contain a resolved <a href> — the rest are lazy until the panel opens.
+    // Perplexity wraps each inline source in a `.citation` chip (name + "+N" badge).
+    // The chip carries its URL in `data-pplx-citation-url` when resolved; the rest are
+    // lazy (link exposed only on hover) but their POSITION still marks the claim sourced.
     citation: ".citation",
     citationsAreChips: true,
+    citationUrlAttr: "data-pplx-citation-url",
   },
   matches(url) {
     return /^https?:\/\/(www\.)?perplexity\.ai\//i.test(url);

@@ -9,9 +9,12 @@ def client():
     return TestClient(app)
 
 
-def _req(text: str, links=None, mode="heuristics_only"):
+def _req(text: str, links=None, mode="heuristics_only", citations=None):
+    answer = {"text": text, "links": links or []}
+    if citations is not None:
+        answer["citations"] = citations
     return {
-        "answer": {"text": text, "links": links or []},
+        "answer": answer,
         "context": {"sourceSite": "chatgpt", "locale": "en-US", "clientVersion": "1.0.0"},
         "options": {"mode": mode, "maxClaims": 20},
     }
@@ -46,6 +49,28 @@ def test_analyze_with_matching_link(client):
     assert body["claims"][0]["matchedSourceIndexes"] == [0]
     assert body["claims"][0]["status"] == "weak"
     assert body["sources"][0]["status"] == "unknown"
+
+
+def test_positional_citation_with_url_backs_claim(client):
+    text = "Rayleigh scattering makes the sky appear blue."
+    citations = [{"pos": len(text) - 1, "url": "https://nasa.gov/rayleigh"}]
+    body = client.post("/v1/analyze", json=_req(text, citations=citations)).json()
+    claim = body["claims"][0]
+    # Positional match, independent of token overlap: the chip sits in the claim's span.
+    assert claim["matchedSourceIndexes"] == [0]
+    assert claim["status"] == "weak"  # heuristics-only: liveness unknown
+    assert body["sources"][0]["domain"] == "nasa.gov"
+    assert "no_visible_sources" not in body["flags"]
+
+
+def test_positional_citation_without_url_marks_weak(client):
+    text = "Rayleigh scattering makes the sky appear blue."
+    citations = [{"pos": len(text) - 1}]  # chip present, link not exposed
+    body = client.post("/v1/analyze", json=_req(text, citations=citations)).json()
+    claim = body["claims"][0]
+    assert claim["status"] == "weak"  # presence alone lifts it out of unsupported
+    assert claim["matchedSourceIndexes"] == []  # no URL -> no source
+    assert "isn't exposed" in claim["reason"]
 
 
 def test_cache_hit_on_second_call(client):

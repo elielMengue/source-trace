@@ -15,7 +15,7 @@ import structlog
 
 from . import HEURISTICS_VERSION
 from .cache import content_hash
-from .citations import match_claim_to_links
+from .citations import assign_citations_to_spans, match_claim_to_links
 from .claims import extract_claims
 from .coach import trace_tip
 from .config import settings
@@ -23,7 +23,9 @@ from .contracts import (
     AnalyzeMode,
     AnalyzeRequest,
     Claim,
+    ClaimStatus,
     EngineInfo,
+    Link,
     Relevance,
     Source,
     Span,
@@ -45,6 +47,26 @@ class _Candidate:
     end: int
     matched_indexes: list[int] = field(default_factory=list)
     relevance: Relevance = Relevance.unknown
+    has_citation: bool = False
+
+
+def _unified_links(answer) -> tuple[list[Link], dict[str, int]]:
+    """Merge cited links and positional-citation URLs into one deduped source list.
+
+    Order is preserved (links first) so source indexes are stable; the URL→index map
+    lets both token matching and positional matching return the same source indexes.
+    """
+    index: dict[str, int] = {}
+    out: list[Link] = []
+    for link in answer.links:
+        if link.url not in index:
+            index[link.url] = len(out)
+            out.append(link)
+    for citation in answer.citations:
+        if citation.url and citation.url not in index:
+            index[citation.url] = len(out)
+            out.append(Link(url=citation.url, anchorText=""))
+    return out, index
 
 
 def _deterministic_candidates(text: str, links, max_claims: int) -> list[_Candidate]:
@@ -64,14 +86,18 @@ async def analyze(request: AnalyzeRequest, extractor: ClaimExtractor | None = No
     use_llm = opts.mode == AnalyzeMode.full and extractor is not None
     network = opts.mode == AnalyzeMode.full and settings.llm_api_key is not None
 
-    sources = await verify_links(answer.links, network=network)
+    # Positional citations (Perplexity chips) carry their own URLs; fold them into the
+    # source list so both matching paths and the sources output see every visible source.
+    all_links, url_to_index = _unified_links(answer)
+
+    sources = await verify_links(all_links, network=network)
 
     candidates: list[_Candidate] = []
     llm_model: str | None = None
     if use_llm:
         try:
             llm_claims, llm_model = await extractor.extract(
-                answer.text, answer.links, opts.maxClaims, locale
+                answer.text, all_links, opts.maxClaims, locale
             )
             candidates = [
                 _Candidate(
@@ -89,7 +115,16 @@ async def analyze(request: AnalyzeRequest, extractor: ClaimExtractor | None = No
             candidates = []
 
     if not candidates:  # deterministic path (heuristics_only, no extractor, or LLM failure)
-        candidates = _deterministic_candidates(answer.text, answer.links, opts.maxClaims)
+        candidates = _deterministic_candidates(answer.text, all_links, opts.maxClaims)
+
+    # Positional citations back whichever claim they sit in or trail — the reliable
+    # signal for inline-anchored sites, independent of token overlap or the LLM.
+    spans = [(cand.start, cand.end) for cand in candidates]
+    for cand, (pos_idx, has_cite) in zip(
+        candidates, assign_citations_to_spans(spans, answer.citations, url_to_index), strict=True
+    ):
+        cand.matched_indexes = sorted(set(cand.matched_indexes) | set(pos_idx))
+        cand.has_citation = has_cite
 
     # LLM-provided relevance enriches the matched sources (take the strongest per source).
     _apply_relevance(sources, candidates)
@@ -98,6 +133,11 @@ async def analyze(request: AnalyzeRequest, extractor: ClaimExtractor | None = No
     statuses = []
     for i, cand in enumerate(candidates):
         status, reason = classify_claim(cand.matched_indexes, sources)
+        # A visible chip with no exposed link still proves the claim is sourced (I1):
+        # lift it out of "unsupported" to "weak" rather than under-report.
+        if status == ClaimStatus.unsupported and cand.has_citation:
+            status = ClaimStatus.weak
+            reason = "A source is cited here, but its link isn't exposed on the page to trace."
         statuses.append(status)
         claims.append(
             Claim(
@@ -113,12 +153,16 @@ async def analyze(request: AnalyzeRequest, extractor: ClaimExtractor | None = No
 
     flags = compute_flags(
         num_claims=len(claims),
-        matched_per_claim=[c.matched_indexes for c in candidates],
+        # A claim is "sourced" for density purposes if it matched a source OR carries a
+        # visible chip (the [0] is just a non-empty truthiness marker, not a real index).
+        matched_per_claim=[
+            c.matched_indexes or ([0] if c.has_citation else []) for c in candidates
+        ],
         sources=sources,
-        num_links=len(answer.links),
+        num_links=len(all_links),
     )
 
-    key = content_hash(answer.text, answer.links, locale, opts.mode)
+    key = content_hash(answer.text, all_links, locale, opts.mode, answer.citations)
     return TraceReport(
         traceReportId=f"sha256:{key}",
         traceScore=compute_trace_score(statuses),

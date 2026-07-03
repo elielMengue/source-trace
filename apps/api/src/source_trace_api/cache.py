@@ -10,20 +10,31 @@ import hashlib
 import time
 from typing import Protocol
 
-from .contracts import AnalyzeMode, Link
+from .contracts import AnalyzeMode, Citation, Link
 
 
-def content_hash(text: str, links: list[Link], locale: str, mode: AnalyzeMode) -> str:
+def content_hash(
+    text: str,
+    links: list[Link],
+    locale: str,
+    mode: AnalyzeMode,
+    citations: list[Citation] | None = None,
+) -> str:
     """Stable cache/report key derived only from content + params (no plaintext stored).
 
-    Links are folded in: two answers with identical text but different cited links
-    produce different reports, so they must not share a cache entry.
+    Links and citations are folded in: two answers with identical text but different
+    cited sources produce different reports, so they must not share a cache entry.
     """
     h = hashlib.sha256()
     h.update(text.encode("utf-8"))
     for link in links:
         h.update(b"\x00")
         h.update(link.url.encode("utf-8"))
+    for citation in citations or ():
+        h.update(b"\x02")
+        h.update(str(citation.pos).encode("utf-8"))
+        h.update(b"\x00")
+        h.update((citation.url or "").encode("utf-8"))
     h.update(b"\x01")
     h.update(locale.encode("utf-8"))
     h.update(b"\x00")

@@ -64,5 +64,6 @@ export default defineBackground(() => {
 
 function cacheKey(m: Extract<Message, { kind: "ANALYZE" }>, locale: string): string {
   const links = m.extraction.links.map((l) => l.url).join("|");
-  return `${locale}::${m.extraction.text}::${links}`;
+  const citations = m.extraction.citations.map((c) => `${c.pos}:${c.url ?? ""}`).join("|");
+  return `${locale}::${m.extraction.text}::${links}::${citations}`;
 }

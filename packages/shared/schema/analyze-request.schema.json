@@ -24,6 +24,19 @@
               "anchorText": { "type": "string" }
             }
           }
+        },
+        "citations": {
+          "description": "Positional in-answer citations (e.g. Perplexity chips). `pos` is a char offset into `text`; `url` is optional (some chips expose their link only on interaction). Presence alone marks a claim as visibly sourced.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["pos"],
+            "properties": {
+              "pos": { "type": "integer", "minimum": 0 },
+              "url": { "type": "string" }
+            }
+          }
         }
       }
     },

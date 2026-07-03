@@ -21,6 +21,10 @@ export interface AdapterSelectors {
    * (ChatGPT) or a wrapper containing one (Perplexity's `.citation` chip). */
   citation: string;
   /** When true, citation elements are UI chips (e.g. Perplexity's "tangente-mag +1")
-   * whose labels are not prose and must be stripped from the extracted claim text. */
+   * whose labels are not prose and must be stripped from the extracted claim text; the
+   * chip's position becomes a positional citation into the claim text. */
   citationsAreChips?: boolean;
+  /** Attribute on a citation chip (or a descendant) holding its source URL, e.g.
+   * Perplexity's `data-pplx-citation-url`. Falls back to an inner `<a href>`. */
+  citationUrlAttr?: string;
 }
