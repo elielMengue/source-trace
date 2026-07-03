@@ -287,7 +287,7 @@ source-trace/
 - [x] LLM claim extraction (batched) — *Anthropic extractor (structured outputs, one batched call); graceful fallback to deterministic*
 - [x] Citation matching + **SSRF-safe** source verification — *LLM relevance + live `full`-mode network verify wired; deterministic fallback retained*
 - [x] Heuristics: no-source / single-source / dead-link / density flags
-- [~] Overlay: inline highlights + **"trace this"** actions — *coaching panel + trace actions done; true inline highlighting of page DOM deferred*
+- [x] Overlay: inline highlights + **"trace this"** actions — *coaching panel + trace actions + inline DOM highlighting (CSS Custom Highlight API, colored by sourcing status)*
 - [x] **Pre-share pause** on low trace score
 - [x] Session summary in popup
 - [x] Locale-aware coaching tips (multilingual, incl. non-English sources)

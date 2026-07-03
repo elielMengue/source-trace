@@ -3,6 +3,7 @@ import { adapterFor } from "../../src/adapters";
 import { localReport } from "../../src/lib/heuristics";
 import { send } from "../../src/lib/messaging";
 import type { Extraction, TraceReport } from "../../src/lib/types";
+import { applyHighlights, clearHighlights } from "../../src/ui/highlight";
 import { Overlay } from "../../src/ui/Overlay";
 import { useOverlay } from "../../src/ui/store";
 import "../../src/ui/overlay.css";
@@ -64,7 +65,9 @@ export default defineContentScript({
       lastText = extraction.text;
 
       // I3: paint provisional (local) immediately, then reconcile with the authoritative report.
-      useOverlay.getState().setReport(localReport(extraction), true);
+      const provisional = localReport(extraction);
+      useOverlay.getState().setReport(provisional, true);
+      applyHighlights(node, adapter.selectors, provisional.claims);
 
       try {
         const report = await send({
@@ -74,6 +77,7 @@ export default defineContentScript({
         });
         latest = report;
         useOverlay.getState().setReport(report, false);
+        applyHighlights(node, adapter.selectors, report.claims);
       } catch {
         // Background already falls back to local; nothing else to do.
       }
@@ -82,6 +86,7 @@ export default defineContentScript({
     const observer = new MutationObserver(() => void analyze());
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
     ctx.onInvalidated(() => observer.disconnect());
+    ctx.onInvalidated(() => clearHighlights());
 
     // Pre-share pause (§4.3): soft, dismissible — never blocks the copy.
     const onCopy = () => {
