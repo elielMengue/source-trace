@@ -74,12 +74,18 @@ class VerifyResult:
     relevance: Relevance
 
 
-async def _head(client: httpx.AsyncClient, url: str) -> VerifyResult:
-    resp = await client.head(url)
-    if resp.status_code < 400:
-        return VerifyResult(SourceStatus.live, Relevance.unknown)
-    # Some servers reject HEAD; a GET liveness fallback could go here later.
-    return VerifyResult(SourceStatus.dead, Relevance.unknown)
+# Status codes that mean the resource EXISTS even though it refused our probe: auth /
+# permission walls, HEAD-not-allowed, not-acceptable, and rate limits. A dead link is
+# one that resolves to nothing (404/410) or fails to connect. We treat gated hosts as
+# live because many real sources 403 an unknown bot yet clearly exist — invariant I1 is
+# "does a visible source exist", not "is it freely fetchable by us".
+_GATED = frozenset({401, 403, 405, 406, 429})
+
+
+def classify_status(status_code: int) -> SourceStatus:
+    if status_code < 400 or status_code in _GATED:
+        return SourceStatus.live
+    return SourceStatus.dead
 
 
 async def verify_link(client: httpx.AsyncClient, link: Link) -> VerifyResult:
@@ -88,7 +94,14 @@ async def verify_link(client: httpx.AsyncClient, link: Link) -> VerifyResult:
     except UnsafeUrlError:
         return VerifyResult(SourceStatus.unknown, Relevance.unknown)
     try:
-        return await _head(client, link.url)
+        resp = await client.head(link.url)
+        status = classify_status(resp.status_code)
+        if status is SourceStatus.dead:
+            # Some servers don't implement HEAD (or 404 it) but serve GET fine. Stream so
+            # we read the status line without downloading the body.
+            async with client.stream("GET", link.url) as get_resp:
+                status = classify_status(get_resp.status_code)
+        return VerifyResult(status, Relevance.unknown)
     except httpx.HTTPError:
         return VerifyResult(SourceStatus.dead, Relevance.unknown)
 

@@ -2,7 +2,13 @@
 No API key or network is used."""
 
 
-from source_trace_api.contracts import AnalyzeRequest, Link, Relevance
+from source_trace_api.contracts import (
+    AnalyzeRequest,
+    Link,
+    Relevance,
+    Source,
+    SourceStatus,
+)
 from source_trace_api.llm import LlmClaim
 from source_trace_api.pipeline import analyze
 
@@ -72,6 +78,45 @@ async def test_llm_failure_falls_back_to_heuristics(monkeypatch):
     report = await analyze(_request(), extractor=FailingExtractor())
     assert report.engine.llm is None  # fell back
     assert len(report.claims) >= 1  # deterministic extraction still produced claims
+
+
+async def test_positional_citation_verified_live_is_supported(monkeypatch):
+    """The full-mode green path: a positional citation whose source verifies live turns
+    its claim SUPPORTED. Network is mocked at the verify_links seam (the verifier's own
+    SSRF/liveness behaviour is covered by test_verifier_ssrf)."""
+    monkeypatch.setattr("source_trace_api.pipeline.settings.llm_api_key", "test-key")
+
+    async def fake_verify(links, *, network):
+        assert network is True  # full mode + key -> network verification is on
+        return [
+            Source(
+                index=i,
+                url=link.url,
+                status=SourceStatus.live,
+                relevance=Relevance.unknown,
+                domain="dcode.example",
+            )
+            for i, link in enumerate(links)
+        ]
+
+    monkeypatch.setattr("source_trace_api.pipeline.verify_links", fake_verify)
+
+    req = AnalyzeRequest.model_validate(
+        {
+            "answer": {
+                "text": TEXT,
+                "links": [],
+                "citations": [{"pos": 20, "url": "https://dcode.example/x"}],
+            },
+            "context": {"sourceSite": "perplexity", "locale": "en-US", "clientVersion": "1.0.0"},
+            "options": {"mode": "full", "maxClaims": 20},
+        }
+    )
+    report = await analyze(req, extractor=None)  # deterministic path; positional match applies
+    assert report.claims[0].status == "supported"  # citation in sentence 1, source live
+    assert report.claims[0].matchedSourceIndexes == [0]
+    assert report.claims[1].status == "unsupported"  # no citation
+    assert report.traceScore == 0.5  # one supported of two claims
 
 
 async def test_heuristics_only_ignores_extractor():
