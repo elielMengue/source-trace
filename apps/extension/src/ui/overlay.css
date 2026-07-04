@@ -91,6 +91,43 @@
 .st-claim__text { margin: 4px 0; }
 .st-claim__tip { color: #555; font-size: 12px; }
 
+.st-claim__sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 2px;
+}
+
+/* A cited source next to the claim it backs; the dot encodes liveness. */
+.st-src {
+  position: relative;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  padding: 2px 8px 2px 18px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #1a1a1a;
+  text-decoration: none;
+}
+.st-src::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #9aa0a6; /* unknown liveness (heuristics-only / not yet verified) */
+}
+.st-src--live::before { background: #1a7f37; }
+.st-src--dead::before { background: #b3261e; }
+.st-src:hover { background: #e9eaee; text-decoration: underline; }
+.st-src:focus-visible { outline: 2px solid #3b82f6; outline-offset: 1px; }
+
 .st-actions {
   display: flex;
   flex-wrap: wrap;

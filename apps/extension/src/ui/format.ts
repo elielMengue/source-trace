@@ -1,4 +1,4 @@
-import type { ClaimStatus, TraceFlag } from "../lib/types";
+import type { ClaimStatus, Source, TraceFlag } from "../lib/types";
 
 export const STATUS_LABEL: Record<ClaimStatus, string> = {
   supported: "Has a visible source",
@@ -12,6 +12,16 @@ export const FLAG_LABEL: Record<TraceFlag, string> = {
   dead_link: "A cited link is dead",
   low_citation_density: "Few claims are sourced",
 };
+
+/** Short, human label for a cited source shown next to a claim. */
+export function sourceLabel(s: Source): string {
+  if (s.domain) return s.domain;
+  try {
+    return new URL(s.url).hostname.replace(/^www\./, "");
+  } catch {
+    return s.url;
+  }
+}
 
 /** A trace action: reverse-search the claim phrase for a primary source. */
 export function reverseSearchUrl(claimText: string): string {

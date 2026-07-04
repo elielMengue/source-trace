@@ -1,6 +1,6 @@
-import type { Claim } from "../lib/types";
+import type { Claim, Source } from "../lib/types";
 import { send } from "../lib/messaging";
-import { FLAG_LABEL, reverseSearchUrl, secondSourceUrl, STATUS_LABEL } from "./format";
+import { FLAG_LABEL, reverseSearchUrl, secondSourceUrl, sourceLabel, STATUS_LABEL } from "./format";
 import { useOverlay } from "./store";
 
 /**
@@ -45,7 +45,13 @@ export function Overlay() {
           <div className="st-claims">
             {report.claims.length === 0 && <p>No checkable claims detected.</p>}
             {report.claims.map((c) => (
-              <ClaimCard key={c.id} claim={c} />
+              <ClaimCard
+                key={c.id}
+                claim={c}
+                sources={c.matchedSourceIndexes
+                  .map((i) => report.sources[i])
+                  .filter((s): s is Source => Boolean(s))}
+              />
             ))}
           </div>
 
@@ -67,13 +73,29 @@ export function Overlay() {
   );
 }
 
-function ClaimCard({ claim }: { claim: Claim }) {
+function ClaimCard({ claim, sources }: { claim: Claim; sources: Source[] }) {
   const onTrace = () => void send({ kind: "EVENT", name: "traces_initiated" });
 
   return (
     <article className={`st-claim st-claim--${claim.status}`}>
       <div className="st-claim__status">{STATUS_LABEL[claim.status]}</div>
       <p className="st-claim__text">{truncate(claim.text, 160)}</p>
+      {sources.length > 0 && (
+        <div className="st-claim__sources">
+          {sources.map((s) => (
+            <a
+              key={s.index}
+              className={`st-src st-src--${s.status}`}
+              href={s.url}
+              target="_blank"
+              rel="noreferrer noopener"
+              title={`${s.url} — ${s.status}`}
+            >
+              {sourceLabel(s)}
+            </a>
+          ))}
+        </div>
+      )}
       <p className="st-claim__tip">{claim.traceTip}</p>
       {claim.status !== "supported" && (
         <div className="st-actions">
