@@ -6,6 +6,7 @@ export type {
   AnalyzeRequest,
   Claim,
   ClaimStatus,
+  Relevance,
   Source,
   SourceSite,
   TraceFlag,

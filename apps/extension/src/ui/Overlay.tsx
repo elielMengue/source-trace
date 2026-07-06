@@ -1,6 +1,14 @@
-import type { Claim, Source } from "../lib/types";
+import { useState } from "react";
+import type { Claim, Relevance, Source, TraceReport } from "../lib/types";
 import { send } from "../lib/messaging";
-import { FLAG_LABEL, reverseSearchUrl, secondSourceUrl, sourceLabel, STATUS_LABEL } from "./format";
+import {
+  buildVerificationNote,
+  FLAG_LABEL,
+  reverseSearchUrl,
+  secondSourceUrl,
+  sourceLabel,
+  STATUS_LABEL,
+} from "./format";
 import { Glyph } from "./Logo";
 import { useOverlay } from "./store";
 
@@ -68,9 +76,12 @@ export function Overlay() {
             </div>
           )}
 
-          <p className="st-disclosure">
-            Analysis is AI-assisted and describes visible sourcing, not truth.
-          </p>
+          <div className="st-foot">
+            <CopyNoteButton report={report} />
+            <p className="st-disclosure">
+              Analysis is AI-assisted and describes visible sourcing, not truth.
+            </p>
+          </div>
         </>
       )}
     </section>
@@ -93,9 +104,10 @@ function ClaimCard({ claim, sources }: { claim: Claim; sources: Source[] }) {
               href={s.url}
               target="_blank"
               rel="noreferrer noopener"
-              title={`${s.url} — ${s.status}`}
+              title={`${s.url} — ${s.status}, relevance ${s.relevance}`}
             >
               {sourceLabel(s)}
+              <RelevanceBars level={s.relevance} />
             </a>
           ))}
         </div>
@@ -125,6 +137,55 @@ function ClaimCard({ claim, sources }: { claim: Claim; sources: Source[] }) {
       )}
     </article>
   );
+}
+
+/** Signal-bar indicator of how relevant the LLM judged a source (full mode only).
+ * Hidden when relevance is unknown (e.g. heuristics-only) — never implies truth. */
+function RelevanceBars({ level }: { level: Relevance }) {
+  const filled = level === "high" ? 3 : level === "medium" ? 2 : level === "low" ? 1 : 0;
+  if (filled === 0) return null;
+  return (
+    <span className="st-rel" title={`Relevance: ${level}`} aria-label={`Relevance ${level}`}>
+      {[0, 1, 2].map((i) => (
+        <span key={i} className={`st-rel__bar${i < filled ? " is-on" : ""}`} />
+      ))}
+    </span>
+  );
+}
+
+function CopyNoteButton({ report }: { report: TraceReport }) {
+  const [copied, setCopied] = useState(false);
+  const onCopy = async () => {
+    await copyText(buildVerificationNote(report));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1600);
+  };
+  return (
+    <button className="st-btn st-btn--wide" onClick={onCopy}>
+      {copied ? "Copied ✓" : "Copy verification note"}
+    </button>
+  );
+}
+
+/** Clipboard write with a legacy fallback (some pages restrict the async Clipboard API). */
+async function copyText(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return;
+  } catch {
+    // fall through
+  }
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand("copy");
+  } finally {
+    ta.remove();
+  }
 }
 
 function truncate(s: string, n: number): string {

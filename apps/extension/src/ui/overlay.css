@@ -144,6 +144,25 @@
 .st-src:hover { background: #e9eaee; text-decoration: underline; }
 .st-src:focus-visible { outline: 2px solid #3b82f6; outline-offset: 1px; }
 
+/* LLM relevance, as signal bars (full mode). */
+.st-rel {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 1px;
+  margin-left: 5px;
+  height: 9px;
+  vertical-align: middle;
+}
+.st-rel__bar {
+  width: 2px;
+  border-radius: 1px;
+  background: #c7cad6;
+}
+.st-rel__bar:nth-child(1) { height: 3px; }
+.st-rel__bar:nth-child(2) { height: 6px; }
+.st-rel__bar:nth-child(3) { height: 9px; }
+.st-rel__bar.is-on { background: var(--st-indigo); }
+
 .st-actions {
   display: flex;
   flex-wrap: wrap;
@@ -185,11 +204,24 @@
 }
 .st-pause__text { flex: 1; font-size: 12px; }
 
+.st-foot {
+  border-top: 1px solid #eee;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.st-btn--wide {
+  width: 100%;
+  text-align: center;
+  font-weight: 600;
+}
+
 .st-disclosure {
-  padding: 6px 12px;
+  margin: 0;
   font-size: 11px;
   color: #8a8a8a;
-  border-top: 1px solid #eee;
 }
 
 @media (prefers-reduced-motion: no-preference) {
