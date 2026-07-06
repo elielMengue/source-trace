@@ -78,7 +78,7 @@ export function Overlay() {
           )}
 
           <div className="st-foot">
-            <CopyNoteButton report={report} />
+            <VerificationNote report={report} />
             <p className="st-disclosure">
               Analysis is AI-assisted and describes visible sourcing, not truth.
             </p>
@@ -162,17 +162,35 @@ function RelevanceBars({ level }: { level: Relevance }) {
   );
 }
 
-function CopyNoteButton({ report }: { report: TraceReport }) {
+/** Expand a preview of the portable verification note, then copy it from inside — so you
+ * always see exactly what lands on the clipboard (WYSIWYG copy). */
+function VerificationNote({ report }: { report: TraceReport }) {
+  const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const note = buildVerificationNote(report);
   const onCopy = async () => {
-    await copyText(buildVerificationNote(report));
+    await copyText(note);
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
   };
   return (
-    <button className="st-btn st-btn--wide" onClick={onCopy}>
-      {copied ? "Copied ✓" : "Copy verification note"}
-    </button>
+    <div className="st-note">
+      <button
+        className="st-btn st-btn--wide"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {open ? "Hide verification note ▴" : "See verification note ▾"}
+      </button>
+      {open && (
+        <div className="st-note__panel">
+          <pre className="st-note__text">{note}</pre>
+          <button className="st-btn st-note__copy" onClick={onCopy}>
+            {copied ? "Copied ✓" : "Copy"}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

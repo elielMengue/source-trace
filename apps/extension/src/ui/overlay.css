@@ -226,6 +226,36 @@
   font-weight: 600;
 }
 
+.st-note {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.st-note__panel {
+  border: 1px solid #e6e6ea;
+  border-radius: 8px;
+  background: #fafafc;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.st-note__text {
+  margin: 0;
+  max-height: 168px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #33363f;
+  user-select: text;
+}
+.st-note__copy {
+  align-self: flex-end;
+}
+
 .st-disclosure {
   margin: 0;
   font-size: 11px;
