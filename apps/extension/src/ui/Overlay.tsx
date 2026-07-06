@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { publisherHint } from "../lib/publisher";
 import type { Claim, Relevance, Source, TraceReport } from "../lib/types";
 import { send } from "../lib/messaging";
 import {
@@ -97,19 +98,27 @@ function ClaimCard({ claim, sources }: { claim: Claim; sources: Source[] }) {
       <p className="st-claim__text">{truncate(claim.text, 160)}</p>
       {sources.length > 0 && (
         <div className="st-claim__sources">
-          {sources.map((s) => (
-            <a
-              key={s.index}
-              className={`st-src st-src--${s.status}`}
-              href={s.url}
-              target="_blank"
-              rel="noreferrer noopener"
-              title={`${s.url} — ${s.status}, relevance ${s.relevance}`}
-            >
-              {sourceLabel(s)}
-              <RelevanceBars level={s.relevance} />
-            </a>
-          ))}
+          {sources.map((s) => {
+            const hint = publisherHint(s.domain);
+            return (
+              <a
+                key={s.index}
+                className={`st-src st-src--${s.status}`}
+                href={s.url}
+                target="_blank"
+                rel="noreferrer noopener"
+                title={`${s.url} — ${s.status}, relevance ${s.relevance}`}
+              >
+                {sourceLabel(s)}
+                {hint && (
+                  <span className="st-src__kind" title={`Publisher: ${hint.long}`}>
+                    {hint.short}
+                  </span>
+                )}
+                <RelevanceBars level={s.relevance} />
+              </a>
+            );
+          })}
         </div>
       )}
       <p className="st-claim__tip">{claim.traceTip}</p>

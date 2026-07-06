@@ -1,3 +1,4 @@
+import { publisherHint } from "../lib/publisher";
 import type { ClaimStatus, Source, TraceFlag, TraceReport } from "../lib/types";
 
 export const STATUS_LABEL: Record<ClaimStatus, string> = {
@@ -30,7 +31,10 @@ export function buildVerificationNote(report: TraceReport): string {
     const srcs = c.matchedSourceIndexes
       .map((idx) => report.sources[idx])
       .filter((s): s is Source => Boolean(s))
-      .map(sourceLabel);
+      .map((s) => {
+        const hint = publisherHint(s.domain);
+        return hint ? `${sourceLabel(s)} (${hint.long})` : sourceLabel(s);
+      });
     if (srcs.length > 0) lines.push(`   sources: ${srcs.join(", ")}`);
   });
   lines.push("");

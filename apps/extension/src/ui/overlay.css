@@ -144,6 +144,14 @@
 .st-src:hover { background: #e9eaee; text-decoration: underline; }
 .st-src:focus-visible { outline: 2px solid #3b82f6; outline-offset: 1px; }
 
+/* Publisher category ("who publishes this?") — descriptive, never a trust score. */
+.st-src__kind {
+  margin-left: 5px;
+  font-size: 10px;
+  color: #8a8f9c;
+  letter-spacing: 0.02em;
+}
+
 /* LLM relevance, as signal bars (full mode). */
 .st-rel {
   display: inline-flex;
