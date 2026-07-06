@@ -295,11 +295,11 @@ source-trace/
 - [x] Anonymous local event counters (pilot evidence)
 
 ### Tier 1 — Should (if time allows before deadline)
-- [ ] Source reputation hints (transparent, non-authoritative; "who publishes this?")
-- [ ] Reverse-image tracing for image sources
-- [ ] Confidence/quality indicator per source
-- [ ] "Find a second source" helper
-- [ ] Copyable verification note
+- [x] Source reputation hints (transparent, non-authoritative; "who publishes this?") — *`publisher.ts`: publisher-type category, never a trust score (I1); on chips + note*
+- [~] Reverse-image tracing for image sources — *deferred (post-MVP): needs a new image-extraction surface; current model is text-claims only; low demo value*
+- [x] Confidence/quality indicator per source — *LLM `relevance` shown as signal bars on source chips (full mode)*
+- [x] "Find a second source" helper — *overlay action on every non-supported claim*
+- [x] Copyable verification note — *overlay footer: plain-text score + per-claim status + cited sources (I1)*
 
 ### Tier 2 — v2 / post-submission (roadmap, name to signal maturity)
 - [ ] Additional adapters (Gemini, Claude, Bing)
