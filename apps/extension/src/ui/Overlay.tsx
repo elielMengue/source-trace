@@ -1,6 +1,7 @@
 import type { Claim, Source } from "../lib/types";
 import { send } from "../lib/messaging";
 import { FLAG_LABEL, reverseSearchUrl, secondSourceUrl, sourceLabel, STATUS_LABEL } from "./format";
+import { Glyph } from "./Logo";
 import { useOverlay } from "./store";
 
 /**
@@ -17,6 +18,9 @@ export function Overlay() {
   return (
     <section className="st-panel" role="complementary" aria-label="Source-Trace analysis">
       <header className="st-header">
+        <span className="st-brand-glyph">
+          <Glyph size={18} />
+        </span>
         <span className="st-title">Source-Trace</span>
         {provisional && <span className="st-provisional" aria-live="polite">analyzing…</span>}
         <span className="st-score" title="Share of claims with a visible source (not truth)">

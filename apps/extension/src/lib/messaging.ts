@@ -25,6 +25,11 @@ export interface MessageResponses {
   SET_SETTINGS: Settings;
 }
 
+/** Sent from the popup to the active tab's content script (via chrome.tabs.sendMessage),
+ * not to the background. The content script replies with its current report, or null. */
+export type PageMessage = { kind: "GET_PAGE_REPORT" };
+export type PageReport = TraceReport | null;
+
 export function send<K extends Message["kind"]>(
   msg: Extract<Message, { kind: K }>,
 ): Promise<MessageResponses[K]> {

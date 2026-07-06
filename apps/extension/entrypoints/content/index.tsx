@@ -3,6 +3,7 @@ import { adapterFor } from "../../src/adapters";
 import { localReport } from "../../src/lib/heuristics";
 import { send } from "../../src/lib/messaging";
 import type { Extraction, TraceReport } from "../../src/lib/types";
+import type { PageMessage } from "../../src/lib/messaging";
 import { applyHighlights, clearHighlights } from "../../src/ui/highlight";
 import { Overlay } from "../../src/ui/Overlay";
 import { useOverlay } from "../../src/ui/store";
@@ -29,6 +30,7 @@ export default defineContentScript({
     const store = useOverlay.getState();
     store.setSourceSite(adapter.id);
     void send({ kind: "EVENT", name: "sessions" });
+    void loadBrandFonts();
 
     const ui = await createShadowRootUi(ctx, {
       name: "source-trace-ui",
@@ -47,6 +49,13 @@ export default defineContentScript({
 
     let lastText = "";
     let latest: TraceReport | null = null;
+    let current: TraceReport | null = null; // best report so far (provisional or authoritative)
+
+    // The popup asks the active tab for its current trace summary.
+    chrome.runtime.onMessage.addListener((msg: PageMessage, _sender, respond) => {
+      if (msg?.kind === "GET_PAGE_REPORT") respond(current);
+      return false;
+    });
 
     const analyze = debounce(async () => {
       const nodes = adapter.findAnswerNodes(document);
@@ -66,6 +75,7 @@ export default defineContentScript({
 
       // I3: paint provisional (local) immediately, then reconcile with the authoritative report.
       const provisional = localReport(extraction);
+      current = provisional;
       useOverlay.getState().setReport(provisional, true);
       applyHighlights(node, adapter.selectors, provisional.claims);
 
@@ -76,6 +86,7 @@ export default defineContentScript({
           sourceSite: adapter.id,
         });
         latest = report;
+        current = report;
         useOverlay.getState().setReport(report, false);
         applyHighlights(node, adapter.selectors, report.claims);
       } catch {
@@ -101,6 +112,29 @@ export default defineContentScript({
     void analyze();
   },
 });
+
+/** Load the self-hosted brand fonts into the page document so the shadow-root overlay
+ * can use them. No external CDN; degrades to system fonts if the page CSP blocks it. */
+async function loadBrandFonts(): Promise<void> {
+  if (!("fonts" in document)) return;
+  const faces: [string, string, string][] = [
+    ["IBM Plex Sans", "/fonts/ibm-plex-sans.woff2", "400 600"],
+    ["Space Grotesk", "/fonts/space-grotesk.woff2", "500 700"],
+  ];
+  await Promise.all(
+    faces.map(async ([family, path, weight]) => {
+      try {
+        const face = new FontFace(family, `url(${chrome.runtime.getURL(path)})`, {
+          weight,
+          display: "swap",
+        });
+        document.fonts.add(await face.load());
+      } catch {
+        // Page CSP may block the fetch — the overlay falls back to system fonts.
+      }
+    }),
+  );
+}
 
 function debounce<T extends (...args: never[]) => void>(fn: T, ms: number): T {
   let handle: ReturnType<typeof setTimeout> | undefined;
