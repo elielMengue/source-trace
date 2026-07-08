@@ -137,3 +137,38 @@ class TraceReport(_Model):
     flags: list[TraceFlag] = Field(default_factory=list)
     claims: list[Claim] = Field(default_factory=list)
     sources: list[Source] = Field(default_factory=list)
+
+
+# ---- deep trace (POST /v1/trace) -------------------------------------------
+# An on-demand, opt-in action: for ONE flagged claim, search the web for independent
+# sources and describe neutrally what each says — never a truth verdict (I1). Full mode
+# only (it sends the claim + context to the LLM under zero-retention, ADR-1); when no LLM
+# key is configured the endpoint returns ``available=false`` so the client keeps its
+# instant Google-search fallback.
+
+
+class TraceQuery(_Model):
+    claim: str = Field(min_length=1, max_length=2_000)
+    # Surrounding answer/thread text so the search is grounded in what the user is reading.
+    context: str = Field(default="", max_length=20_000)
+    locale: str = "en"
+
+
+class DeepSource(_Model):
+    url: str
+    title: str
+    # A short, attributed description of what THIS source says about the topic — never an
+    # assertion that the claim is true or false (I1).
+    note: str
+
+
+class DeepTraceResult(_Model):
+    traceId: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+    # False when the LLM/web-search backend isn't configured — the client falls back to
+    # its instant reverse-search link rather than showing an empty result.
+    available: bool
+    # A neutral overview of whether the independent sources found appear to converge or
+    # diverge on the point — still never a verdict on the claim.
+    summary: str
+    sources: list[DeepSource] = Field(default_factory=list)
+    disclaimer: str

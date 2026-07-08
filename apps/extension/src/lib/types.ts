@@ -35,3 +35,21 @@ export interface AnalyzeContext {
   locale: string;
   mode: AnalyzeMode;
 }
+
+/** One independent source found by the deep-trace action, with a neutral, attributed
+ * note describing what it says about the topic (never a truth verdict — I1). */
+export interface DeepSource {
+  url: string;
+  title: string;
+  note: string;
+}
+
+/** Result of POST /v1/trace. `available` is false when the LLM/web-search backend isn't
+ * configured or failed — the UI then keeps its instant reverse-search link. */
+export interface DeepTraceResult {
+  traceId: string;
+  available: boolean;
+  summary: string;
+  sources: DeepSource[];
+  disclaimer: string;
+}

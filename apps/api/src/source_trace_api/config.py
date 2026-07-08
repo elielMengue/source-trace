@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,6 +21,14 @@ class Settings(BaseSettings):
     # LLM (full mode). Absent key -> full mode degrades to heuristics-only.
     llm_api_key: str | None = None
     llm_model: str = "claude-opus-4-8"
+
+    # Deep trace (POST /v1/trace) — the "search independent sources" action.
+    # Provider: "gemini" for the demo (Google Search grounding), "anthropic" for prod
+    # (web search under zero-retention, ADR-1). "auto" picks whichever key is present.
+    trace_provider: str = "auto"
+    # Gemini key is read WITHOUT the ST_ prefix (the .env ships GEMINI_API_KEY).
+    gemini_api_key: str | None = Field(default=None, validation_alias="GEMINI_API_KEY")
+    gemini_model: str = "gemini-2.5-flash"
 
     # Guarded fetcher (§8)
     fetch_timeout_seconds: float = 3.0

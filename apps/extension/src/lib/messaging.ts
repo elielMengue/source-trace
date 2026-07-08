@@ -1,4 +1,4 @@
-import type { Extraction, SourceSite, TraceReport } from "./types";
+import type { DeepTraceResult, Extraction, SourceSite, TraceReport } from "./types";
 import type { Settings } from "./settings";
 import type { SessionStats } from "./session";
 
@@ -9,6 +9,7 @@ import type { SessionStats } from "./session";
  */
 export type Message =
   | { kind: "ANALYZE"; extraction: Extraction; sourceSite: SourceSite }
+  | { kind: "DEEP_TRACE"; claim: string; context: string }
   | { kind: "EVENT"; name: keyof SessionStats }
   | { kind: "GET_STATE" }
   | { kind: "SET_SETTINGS"; patch: Partial<Settings> };
@@ -20,6 +21,7 @@ export interface StateResponse {
 
 export interface MessageResponses {
   ANALYZE: TraceReport;
+  DEEP_TRACE: DeepTraceResult;
   EVENT: { ok: true };
   GET_STATE: StateResponse;
   SET_SETTINGS: Settings;

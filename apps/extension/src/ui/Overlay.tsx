@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { publisherHint } from "../lib/publisher";
 import type { Claim, Relevance, Source, TraceReport } from "../lib/types";
 import { send } from "../lib/messaging";
@@ -25,6 +25,7 @@ export function Overlay() {
   const scorePct = Math.round(report.traceScore * 100);
 
   return (
+    <>
     <section className="st-panel" role="complementary" aria-label="Source-Trace analysis">
       <header className="st-header">
         <span className="st-brand-glyph">
@@ -86,11 +87,28 @@ export function Overlay() {
         </>
       )}
     </section>
+    <DeepTraceBubble />
+    </>
   );
 }
 
 function ClaimCard({ claim, sources }: { claim: Claim; sources: Source[] }) {
+  const mode = useOverlay((s) => s.mode);
+  const deep = useOverlay((s) => s.deep);
+  const tracingThis = deep?.status === "loading" && deep.claim === claim.text;
   const onTrace = () => void send({ kind: "EVENT", name: "traces_initiated" });
+
+  // Kick off deep trace and stream the result into the floating bubble via the store.
+  const runDeep = async () => {
+    const { openDeep, setDeepResult, answerText } = useOverlay.getState();
+    openDeep(claim.text);
+    try {
+      const r = await send({ kind: "DEEP_TRACE", claim: claim.text, context: answerText });
+      setDeepResult(r.available ? "done" : "unavailable", r.available ? r : null);
+    } catch {
+      setDeepResult("unavailable", null);
+    }
+  };
 
   return (
     <article className={`st-claim st-claim--${claim.status}`}>
@@ -123,28 +141,149 @@ function ClaimCard({ claim, sources }: { claim: Claim; sources: Source[] }) {
       )}
       <p className="st-claim__tip">{claim.traceTip}</p>
       {claim.status !== "supported" && (
-        <div className="st-actions">
-          <a
-            className="st-btn"
-            href={reverseSearchUrl(claim.text)}
-            target="_blank"
-            rel="noreferrer noopener"
-            onClick={onTrace}
-          >
-            Trace this
-          </a>
-          <a
-            className="st-btn"
-            href={secondSourceUrl(claim.text)}
-            target="_blank"
-            rel="noreferrer noopener"
-            onClick={onTrace}
-          >
-            Find a second source
-          </a>
-        </div>
+        <>
+          <div className="st-actions">
+            <a
+              className="st-btn"
+              href={reverseSearchUrl(claim.text)}
+              target="_blank"
+              rel="noreferrer noopener"
+              onClick={onTrace}
+            >
+              Trace this
+            </a>
+            <a
+              className="st-btn"
+              href={secondSourceUrl(claim.text)}
+              target="_blank"
+              rel="noreferrer noopener"
+              onClick={onTrace}
+            >
+              Find a second source
+            </a>
+          </div>
+          {/* Deep trace sends the claim to the backend, so it's offered in full mode only
+              (privacy mode stays on-device — I2). The result opens as a separate floating
+              chat bubble; the instant links above always remain. */}
+          {mode === "full" && (
+            <button
+              className="st-btn st-btn--deep"
+              disabled={tracingThis}
+              onClick={runDeep}
+            >
+              {tracingThis ? "Tracing…" : "✨ Deep trace"}
+            </button>
+          )}
+        </>
       )}
     </article>
+  );
+}
+
+/** The deep-trace result, shown as a floating chat bubble independent of the claims list
+ * (bottom-left, scrollable, dismissible). It surfaces independent sources with a neutral,
+ * attributed note each — never a truth verdict (I1). */
+function DeepTraceBubble() {
+  const deep = useOverlay((s) => s.deep);
+  const closeDeep = useOverlay((s) => s.closeDeep);
+  const asideRef = useRef<HTMLElement>(null);
+  // Explicit position once the user has dragged the bubble; null = default CSS anchor
+  // (bottom-left). Persisted across opens so the bubble stays where the user put it.
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const drag = useRef<{ dx: number; dy: number } | null>(null);
+
+  if (!deep) return null;
+  const { status, claim, result } = deep;
+
+  const onGripDown = (e: React.PointerEvent) => {
+    // Don't start a drag from the close button.
+    if ((e.target as HTMLElement).closest("button")) return;
+    const el = asideRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    drag.current = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onGripMove = (e: React.PointerEvent) => {
+    const el = asideRef.current;
+    if (!drag.current || !el) return;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const left = Math.max(4, Math.min(e.clientX - drag.current.dx, window.innerWidth - w - 4));
+    const top = Math.max(4, Math.min(e.clientY - drag.current.dy, window.innerHeight - h - 4));
+    setPos({ left, top });
+  };
+  const onGripUp = (e: React.PointerEvent) => {
+    drag.current = null;
+    (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+  };
+
+  return (
+    <aside
+      ref={asideRef}
+      className="st-bubble"
+      role="dialog"
+      aria-label="Deep trace summary"
+      style={pos ? { left: pos.left, top: pos.top, right: "auto", bottom: "auto" } : undefined}
+    >
+      <header
+        className="st-bubble__head"
+        onPointerDown={onGripDown}
+        onPointerMove={onGripMove}
+        onPointerUp={onGripUp}
+      >
+        <span className="st-brand-glyph">
+          <Glyph size={16} />
+        </span>
+        <span className="st-bubble__title">Deep trace</span>
+        <span className="st-bubble__grip" aria-hidden="true" title="Drag to move">
+          ⠿
+        </span>
+        <button className="st-icon-btn" aria-label="Close deep trace" onClick={closeDeep}>
+          ✕
+        </button>
+      </header>
+      <div className="st-bubble__body">
+        <p className="st-bubble__claim">Tracing: “{truncate(claim, 180)}”</p>
+
+        {status === "loading" && (
+          <div className="st-deep st-deep--busy" role="status" aria-live="polite">
+            <span className="st-spinner" aria-hidden="true" />
+            <span>Searching independent sources…</span>
+          </div>
+        )}
+
+        {status === "unavailable" && (
+          <p className="st-deep__note">
+            Deep trace isn’t available right now — use the Trace links in the panel instead.
+          </p>
+        )}
+
+        {status === "done" && result && (
+          <>
+            {result.summary && <p className="st-bubble__summary">{result.summary}</p>}
+            {result.sources.length > 0 && (
+              <ul className="st-deep__sources">
+                {result.sources.map((s) => (
+                  <li key={s.url} className="st-deep__source">
+                    <a
+                      href={s.url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="st-deep__link"
+                    >
+                      {s.title}
+                    </a>
+                    {s.note && <span className="st-deep__snote"> — {s.note}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {result.disclaimer && <p className="st-deep__disclaimer">{result.disclaimer}</p>}
+          </>
+        )}
+      </div>
+    </aside>
   );
 }
 

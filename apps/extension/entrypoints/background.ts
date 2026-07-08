@@ -1,9 +1,19 @@
-import { analyze } from "../src/lib/api";
+import { analyze, deepTrace } from "../src/lib/api";
 import { localReport } from "../src/lib/heuristics";
 import type { Message, MessageResponses } from "../src/lib/messaging";
 import { getSettings, setSettings } from "../src/lib/settings";
 import { bumpStat, getStats } from "../src/lib/session";
-import type { TraceReport } from "../src/lib/types";
+import type { DeepTraceResult, TraceReport } from "../src/lib/types";
+
+/** The client falls back to its instant reverse-search link when deep trace is
+ * unavailable (privacy mode, no key, or a backend error) — never an error to the UI. */
+const DEEP_TRACE_UNAVAILABLE: DeepTraceResult = {
+  traceId: "",
+  available: false,
+  summary: "",
+  sources: [],
+  disclaimer: "",
+};
 
 /**
  * Orchestrator (§4.2). Owns the messaging bus, the st-api call, and anonymous counters.
@@ -49,6 +59,24 @@ export default defineBackground(() => {
             // Graceful degradation (I3): a failed backend never blocks reading.
             return localReport(m.extraction);
           }
+        }
+      }
+      case "DEEP_TRACE": {
+        const settings = await getSettings();
+        // Privacy mode never leaves the browser (I2) — no deep trace, keep the local link.
+        if (settings.mode === "heuristics_only") return DEEP_TRACE_UNAVAILABLE;
+        try {
+          const result = await deepTrace(
+            settings.apiBaseUrl,
+            msg.claim,
+            msg.context,
+            settings.locale,
+          );
+          if (result.available) await bumpStat("traces_initiated");
+          return result;
+        } catch {
+          // Graceful degradation (I3): a failed backend falls back to the instant link.
+          return DEEP_TRACE_UNAVAILABLE;
         }
       }
       case "EVENT":

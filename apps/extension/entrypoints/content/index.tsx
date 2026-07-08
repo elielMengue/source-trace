@@ -32,6 +32,12 @@ export default defineContentScript({
     void send({ kind: "EVENT", name: "sessions" });
     void loadBrandFonts();
 
+    // Learn the analysis mode so the overlay only offers deep trace in full mode (the
+    // action sends text to the backend; privacy mode must stay on-device — I2).
+    void send({ kind: "GET_STATE" })
+      .then((state) => useOverlay.getState().setMode(state.settings.mode))
+      .catch(() => {});
+
     const ui = await createShadowRootUi(ctx, {
       name: "source-trace-ui",
       position: "inline",
@@ -72,6 +78,8 @@ export default defineContentScript({
       const extraction: Extraction = adapter.extract(node);
       if (extraction.text.length < MIN_ANSWER_CHARS || extraction.text === lastText) return;
       lastText = extraction.text;
+      // Grounding context for the deep-trace action (the answer the user is reading).
+      useOverlay.getState().setAnswerText(extraction.text);
 
       // I3: paint provisional (local) immediately, then reconcile with the authoritative report.
       const provisional = localReport(extraction);
