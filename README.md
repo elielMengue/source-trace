@@ -7,7 +7,13 @@
 **A browser extension + analysis backend that coaches you to trace the claims in an AI answer — instead of declaring them true or false.**
 
 [![CI](https://github.com/elielMengue/source-trace/actions/workflows/ci.yml/badge.svg)](https://github.com/elielMengue/source-trace/actions/workflows/ci.yml)
-&nbsp;·&nbsp; MV3 (WXT + React) &nbsp;·&nbsp; FastAPI (Python 3.13) &nbsp;·&nbsp; Perplexity + ChatGPT
+![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-18-20232A?logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![WXT](https://img.shields.io/badge/WXT-MV3-67D55E?logo=googlechrome&logoColor=white)
+
+<sub>Works on Perplexity + ChatGPT</sub>
 
 <img src="./docs/demo.gif" alt="Source-Trace overlay analyzing a Perplexity answer, then deep-tracing a claim to independent sources" width="820" />
 
