@@ -1,52 +1,96 @@
+<div align="center">
+
+<img src="./logo.png" alt="Source-Trace" width="96" />
+
 # Source-Trace
 
-A **browser extension + analysis backend** that reads an AI-generated answer, identifies
-which claims have visible, checkable sourcing, and **coaches the user to trace them** —
-rather than declaring anything true or false.
+**A browser extension + analysis backend that coaches you to trace the claims in an AI answer — instead of declaring them true or false.**
 
-See [`Source-Trace_Technical_Design.md`](./Source-Trace_Technical_Design.md) for the full design.
+[![CI](https://github.com/elielMengue/source-trace/actions/workflows/ci.yml/badge.svg)](https://github.com/elielMengue/source-trace/actions/workflows/ci.yml)
+&nbsp;·&nbsp; MV3 (WXT + React) &nbsp;·&nbsp; FastAPI (Python 3.13) &nbsp;·&nbsp; Perplexity + ChatGPT
+
+<img src="./docs/demo.gif" alt="Source-Trace overlay analyzing a Perplexity answer, then deep-tracing a claim to independent sources" width="820" />
+
+</div>
+
+---
+
+## What it does
+
+You ask an AI a question. It answers with confident prose and a few citation chips. **Which sentences are actually backed by a source, and which just sound authoritative?**
+
+Source-Trace reads the answer in-page and paints a coaching overlay:
+
+- 🟢 **Sourced** — a citation sits on this claim (open it and confirm it says what's claimed)
+- 🟠 **Weak** — a source is cited but couldn't be verified, or it's the only one
+- 🔴 **No visible source** — this sentence stands on nothing you can check
+
+It never says *true* or *false*. It shows you **where the sourcing is thin and how to close the gap** — one click to reverse-search, find a second source, or run a **✨ Deep trace** that searches the web for independent sources and summarizes what each says (never a verdict).
 
 ## Product invariants (non-negotiable)
 
-- **I1 — Coach, not oracle.** `status` describes whether a claim has adequate *visible sourcing*, never whether it is *true*.
-- **I2 — Transparent by construction.** We disclose AI use in-product and offer an on-device path.
-- **I3 — Progressive, never blocking.** The UI paints instantly and enriches as analysis returns; a slow/failed backend degrades to heuristics-only.
+- **I1 — Coach, not oracle.** Every status describes *visible sourcing*, never *truth*. No feature — including Deep trace — is allowed to output a true/false verdict.
+- **I2 — Transparent by construction.** AI use is disclosed in-product, and there's an on-device path: **Privacy mode** runs the heuristics locally and sends nothing to a backend.
+- **I3 — Progressive, never blocking.** The overlay paints instantly from local heuristics and enriches as the backend returns; a slow or absent backend degrades gracefully instead of failing.
+
+## Features
+
+| | |
+|---|---|
+| **In-page overlay** | Per-claim sourcing status + trace score, injected via a Shadow-DOM UI that never touches the host page's styles. |
+| **Inline highlighting** | Claims tinted in-place by status using the CSS Custom Highlight API (non-destructive Ranges). |
+| **Deep trace** | Delegates the manual "open a tab and search" work to an LLM + web search; returns **independent sources with a neutral, attributed note each**, in a draggable, scrollable chat bubble. |
+| **Verification note** | One-click, copy-paste-able summary of what's sourced and what to check — WYSIWYG (you copy exactly what you preview). |
+| **Publisher hints** | Describes *who publishes* a source (news / encyclopedia / gov / …) — a category, never a trust score (I1). |
+| **Privacy mode** | Heuristics-only, fully on-device; the network-bound features (full-mode extraction, Deep trace) are gated off. |
+| **i18n** | Coaching tips localized (en / fr / es today), resolved by locale with an English fallback. |
+
+## How it works
+
+```
+┌─────────────────────────────┐         ┌──────────────────────────────┐
+│  Extension (MV3, WXT+React)  │         │        st-api (FastAPI)      │
+│                              │  POST   │                              │
+│  adapter → extract claims &  │ /v1/    │  heuristics + cache          │
+│  citations from the DOM      │ analyze │  + LLM claim extraction      │
+│         ↓                    │ ───────▶│  + SSRF-safe citation verify │
+│  overlay + highlighting      │◀─────── │        ↓                     │
+│         ↓                    │  Trace  │  Trace Report (JSON contract)│
+│  "✨ Deep trace"  ───────────│ /v1/    │  web search via Gemini (demo)│
+│  draggable sources bubble    │ trace   │  or Claude (prod), I1-safe   │
+└─────────────────────────────┘         └──────────────────────────────┘
+   Privacy mode: everything left of the line, nothing leaves the browser.
+```
+
+The Trace Report is a **contract-first JSON Schema** in `packages/shared`, from which both the TypeScript and Pydantic types are generated — so client and server can't drift.
 
 ## Monorepo layout
 
 ```
 source-trace/
   apps/
-    extension/     # WXT + React (adapters, overlay, popup, background)  [scaffolded]
-    api/           # FastAPI (analyze, claims, citations, verifier, heuristics, coach)
+    extension/   # WXT + React — adapters, overlay, popup, background orchestrator
+    api/         # FastAPI — analyze, heuristics, citation verifier, deep trace, coach
   packages/
-    shared/        # JSON Schema + generated TS/Pydantic types (Trace Report)
-  infra/
-    docker/  ci/
+    shared/      # JSON Schema contract + generated TS/Pydantic types (Trace Report)
+  infra/docker/  # api.Dockerfile (container recipe)
+  railway.toml   # backend deploy config
 ```
-
-## Build sequence (from the design doc §14)
-
-1. `packages/shared` — Trace Report JSON Schema (contract-first). ✅
-2. `apps/api` — FastAPI skeleton + heuristics + cache; `/v1/analyze` returning heuristics-only. ✅
-3. `apps/extension` — WXT shell + Perplexity/ChatGPT adapters + provisional render + overlay + popup. ✅
-4. LLM claim extraction + citation verification; wire `full`-mode network path. ✅
-5. Overlay coaching UX + pre-share pause + i18n; privacy toggle + inline DOM highlighting (CSS Custom Highlight API). ✅
-6. Anonymous counters → pilot → export evidence. ✅ counters shipped · ⏳ aggregate export is post-pilot.
-
-See §12 of the design doc for the per-feature checklist.
 
 ## Quickstart — extension
 
 ```bash
 pnpm install
-pnpm dev:ext        # loads a dev build; open Perplexity or ChatGPT
-pnpm build:ext      # production MV3 bundle in apps/extension/.output/chrome-mv3
+pnpm build:ext      # production MV3 bundle → apps/extension/.output/chrome-mv3
 ```
 
-The extension talks to `st-api` at `http://127.0.0.1:8000` by default (change in the popup
-later, or via settings). Run the API first for `full` mode; `heuristics_only` mode needs no
-backend and never leaves the browser.
+Then load it in Chrome: **chrome://extensions → Developer mode → Load unpacked →** pick
+`apps/extension/.output/chrome-mv3`, and open Perplexity or ChatGPT. The overlay appears
+once an answer renders. (`pnpm dev:ext` launches a throwaway dev profile — handy for
+iteration, but it isn't logged into the AI sites.)
+
+`full` mode talks to `st-api` at `http://127.0.0.1:8000`. **Privacy mode** needs no backend
+and never leaves the browser.
 
 ## Quickstart — API
 
@@ -56,10 +100,10 @@ python -m venv .venv
 # Windows PowerShell:  .venv\Scripts\Activate.ps1
 # bash:                source .venv/bin/activate
 pip install -e ".[dev]"
-uvicorn source_trace_api.main:app --reload
+uvicorn source_trace_api.main:app --reload    # http://127.0.0.1:8000
 ```
 
-Then:
+Try it:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/analyze \
@@ -67,8 +111,52 @@ curl -X POST http://127.0.0.1:8000/v1/analyze \
   -d '{"answer":{"text":"The sky is blue. Studies show it is caused by Rayleigh scattering.","links":[]},"context":{"sourceSite":"chatgpt","locale":"en-US","clientVersion":"1.0.0"},"options":{"mode":"heuristics_only","maxClaims":20}}'
 ```
 
-Run tests:
+| Endpoint | Purpose |
+|---|---|
+| `GET /healthz` | Liveness + version. |
+| `POST /v1/analyze` | Full Trace Report for an answer (heuristics + optional LLM extraction + citation verification). |
+| `POST /v1/trace` | Deep trace one claim → independent sources with attributed notes (never a verdict). |
+
+## Deploy the backend (Railway)
+
+The API is a stateless container ([`infra/docker/api.Dockerfile`](./infra/docker/api.Dockerfile))
+with a config-as-code [`railway.toml`](./railway.toml) that builds from that Dockerfile, binds
+Railway's injected `$PORT`, and health-checks `/healthz`.
 
 ```bash
-cd apps/api && pytest
+npm i -g @railway/cli
+railway login
+railway init            # create/link a project
+railway up              # build the Dockerfile and deploy
 ```
+
+Or connect the GitHub repo in the Railway dashboard for auto-deploy on push.
+
+**Set secrets** in the Railway dashboard (or `railway variables --set …`) — never commit them:
+
+| Variable | Why |
+|---|---|
+| `GEMINI_API_KEY` | Deep-trace provider for the demo (Google Search grounding). **No `ST_` prefix.** |
+| `ST_LLM_API_KEY` | Full-mode claim extraction, and the **prod** deep-trace provider (Claude). |
+| `ST_TRACE_PROVIDER` | `auto` (default) · `gemini` (demo) · `anthropic` (prod). |
+| `ST_ALLOWED_EXTENSION_IDS` | Pin CORS to your published extension id(s) in production. |
+
+See [`apps/api/.env.example`](./apps/api/.env.example) for the full list (all optional; sane
+dev defaults apply). Without any LLM key, `full` mode degrades to heuristics-only and Deep
+trace reports "unavailable" — the instant reverse-search links always remain (I3).
+
+## Testing
+
+```bash
+cd apps/api && pytest        # backend (heuristics, verifier, deep trace, pipeline)
+pnpm --filter @source-trace/extension test    # extension (extract, heuristics, highlight)
+```
+
+CI ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)) runs ruff + pytest for the API
+and typecheck + vitest + MV3 build for the extension on every push and PR.
+
+## Design & status
+
+The full design — architecture, the Trace Report contract, ADRs (incl. zero-retention LLM
+usage), and the per-feature checklist — lives in
+[`Source-Trace_Technical_Design.md`](./Source-Trace_Technical_Design.md).

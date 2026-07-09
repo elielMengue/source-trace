@@ -1,0 +1,18 @@
+# Railway config-as-code for the st-api backend.
+# Railway builds from the existing container recipe (build context = repo root) and injects
+# a $PORT the service must bind. Deploy: `railway up` (or connect the repo for auto-deploy).
+# Set secrets in the Railway dashboard / CLI — never commit them (see apps/api/.env.example):
+#   GEMINI_API_KEY   (deep-trace demo provider — note: NO ST_ prefix)
+#   ST_LLM_API_KEY   (full-mode extraction + prod deep-trace provider)
+#   ST_ALLOWED_EXTENSION_IDS  (pin to your published extension id in prod)
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "infra/docker/api.Dockerfile"
+
+[deploy]
+# Bind to Railway's injected $PORT (the Dockerfile CMD hard-codes 8000, which Railway can't reach).
+startCommand = "uvicorn source_trace_api.main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/healthz"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
