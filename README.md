@@ -11,6 +11,8 @@
 
 <img src="./docs/demo.gif" alt="Source-Trace overlay analyzing a Perplexity answer, then deep-tracing a claim to independent sources" width="820" />
 
+<sub>▶ Also available as <a href="./docs/demo.mp4">MP4</a></sub>
+
 </div>
 
 ---
