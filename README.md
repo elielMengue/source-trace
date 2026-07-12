@@ -168,3 +168,10 @@ and typecheck + vitest + MV3 build for the extension on every push and PR.
 The full design — architecture, the Trace Report contract, ADRs (incl. zero-retention LLM
 usage), and the per-feature checklist — lives in
 [`Source-Trace_Technical_Design.md`](./Source-Trace_Technical_Design.md).
+
+## Privacy & license
+
+- **Privacy** — Privacy mode is fully on-device; Full mode sends the answer text to the
+  backend (no content DB, content-free logs). Details, including third-party LLM
+  processing for Deep trace, are in [`PRIVACY.md`](./PRIVACY.md).
+- **License** — [MIT](./LICENSE).

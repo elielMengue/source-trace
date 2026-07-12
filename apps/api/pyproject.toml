@@ -6,6 +6,7 @@ build-backend = "hatchling.build"
 name = "source-trace-api"
 version = "0.1.0"
 description = "Source-Trace analysis backend (st-api): stateless FastAPI service returning a normalized Trace Report."
+license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
