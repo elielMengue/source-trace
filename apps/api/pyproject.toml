@@ -17,6 +17,7 @@ dependencies = [
     "structlog>=24.1",
     "anthropic>=0.40",
     "google-genai>=1.0",
+    "slowapi>=0.1.9",
 ]
 
 [project.optional-dependencies]

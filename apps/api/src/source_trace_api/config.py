@@ -57,5 +57,11 @@ class Settings(BaseSettings):
     fetch_timeout_seconds: float = 3.0
     fetch_max_redirects: int = 3
 
+    # Rate limiting (public /v1/* endpoints protect the LLM quota). Values are slowapi
+    # limit strings. trace is stricter — it fans out to an LLM + web search.
+    rate_limit_enabled: bool = True
+    rate_limit: str = "60/minute"
+    trace_rate_limit: str = "12/minute"
+
 
 settings = Settings()

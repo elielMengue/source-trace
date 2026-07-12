@@ -10,8 +10,12 @@ import hashlib
 import time
 
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from . import __version__
 from .cache import InMemoryCache, content_hash
@@ -29,11 +33,30 @@ from .trace import build_tracer
 
 log = structlog.get_logger()
 
+
+def _client_key(request: Request) -> str:
+    """Rate-limit key = real client IP. Behind Railway's proxy the socket peer is the
+    proxy, so prefer the first hop of X-Forwarded-For when present."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return get_remote_address(request)
+
+
+limiter = Limiter(
+    key_func=_client_key,
+    default_limits=[settings.rate_limit],
+    enabled=settings.rate_limit_enabled,
+)
+
 app = FastAPI(
     title="st-api",
     version=__version__,
     summary="Source-Trace analysis backend — returns a normalized Trace Report.",
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # Pin to configured extension IDs in production; otherwise accept only well-formed
 # unpacked-extension origins (32 chars a–p) — never a blanket `chrome-extension://.*`.
@@ -67,6 +90,7 @@ _TRACE_DISCLAIMER = (
 
 
 @app.get("/healthz")
+@limiter.exempt
 async def healthz() -> dict[str, str]:
     return {"status": "ok", "version": __version__}
 
@@ -119,7 +143,8 @@ def _trace_key(query: TraceQuery) -> str:
 
 
 @app.post("/v1/trace", response_model=DeepTraceResult)
-async def trace_endpoint(query: TraceQuery) -> DeepTraceResult:
+@limiter.limit(settings.trace_rate_limit)
+async def trace_endpoint(request: Request, query: TraceQuery) -> DeepTraceResult:
     started = time.perf_counter()
     key = _trace_key(query)
     trace_id = f"sha256:{key}"
