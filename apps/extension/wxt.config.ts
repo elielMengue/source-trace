@@ -24,6 +24,9 @@ export default defineConfig({
       "https://perplexity.ai/*",
       "https://chatgpt.com/*",
       "https://chat.openai.com/*",
+      // Hosted st-api backend (Full mode / Deep trace). Local dev backends are
+      // reached via the server's CORS allowance for extension origins.
+      "https://st-api-production-31b6.up.railway.app/*",
     ],
     permissions: ["storage"],
     // Self-hosted brand fonts, exposed to the content-script overlay on the AI sites

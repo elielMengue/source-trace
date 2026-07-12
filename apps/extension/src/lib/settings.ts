@@ -13,7 +13,9 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   mode: "full",
   locale: typeof navigator !== "undefined" ? navigator.language : "en-US",
-  apiBaseUrl: "http://127.0.0.1:8000",
+  // Hosted st-api (Railway). Override in the popup to point at a local backend
+  // (http://127.0.0.1:8000) for development.
+  apiBaseUrl: "https://st-api-production-31b6.up.railway.app",
 };
 
 const KEY = "settings";
