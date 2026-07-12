@@ -12,7 +12,9 @@ dockerfilePath = "infra/docker/api.Dockerfile"
 
 [deploy]
 # Bind to Railway's injected $PORT (the Dockerfile CMD hard-codes 8000, which Railway can't reach).
-startCommand = "uvicorn source_trace_api.main:app --host 0.0.0.0 --port $PORT"
+# Wrapped in `sh -c` so the shell expands $PORT — Railway runs startCommand in exec form, so a
+# bare "$PORT" would reach uvicorn literally. ${PORT:-8000} keeps a sane local fallback.
+startCommand = "sh -c 'uvicorn source_trace_api.main:app --host 0.0.0.0 --port ${PORT:-8000}'"
 healthcheckPath = "/healthz"
 healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"
