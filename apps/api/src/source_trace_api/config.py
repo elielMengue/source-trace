@@ -2,17 +2,40 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Annotated
+
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="ST_", env_file=".env", extra="ignore")
 
     # CORS (§8): pin to specific published extension IDs in production via
-    # ST_ALLOWED_EXTENSION_IDS (comma/JSON list of 32-char ids). When empty (dev), we
-    # fall back to accepting any well-formed unpacked-extension origin — never `*`.
-    allowed_extension_ids: list[str] = []
+    # ST_ALLOWED_EXTENSION_IDS. When empty/unset (dev), we fall back to accepting any
+    # well-formed unpacked-extension origin — never `*`.
+    #
+    # NoDecode: don't let pydantic-settings JSON-decode this env value at the source
+    # (an empty string or a bare comma-separated list is not valid JSON and would crash
+    # startup). We parse it ourselves below, accepting: "" -> [], "id1,id2" (comma or
+    # whitespace separated), or a JSON array.
+    allowed_extension_ids: Annotated[list[str], NoDecode] = []
+
+    @field_validator("allowed_extension_ids", mode="before")
+    @classmethod
+    def _parse_extension_ids(cls, v: object) -> object:
+        if v is None:
+            return []
+        if isinstance(v, str):
+            s = v.strip()
+            if not s:
+                return []
+            if s.startswith("["):
+                import json
+
+                return json.loads(s)
+            return [part.strip() for part in s.replace(",", " ").split() if part.strip()]
+        return v
 
     # Cache
     cache_ttl_seconds: int = 7 * 24 * 3600  # 7d (§4.5)
