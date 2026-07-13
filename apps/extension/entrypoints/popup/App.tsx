@@ -90,7 +90,6 @@ export function App() {
           <Stat label="Shares paused" value={stats.shares_paused} />
           <Stat label="Sessions" value={stats.sessions} />
         </ul>
-        <p className="p-note">Counts only — no content leaves this device for these.</p>
       </section>
 
       <section className="p-card">
@@ -188,11 +187,23 @@ function PageSummary({ report }: { report: TraceReport }) {
   );
 }
 
+/** Empty state: a shimmering skeleton that echoes the shape of the real summary
+ * (donut + breakdown bars), so the panel feels alive while it waits for an answer.
+ * Deliberately site-agnostic — more AI sites are coming beyond Perplexity/ChatGPT. */
 function PageEmpty() {
   return (
-    <p className="p-note">
-      Open a Perplexity or ChatGPT answer to see its trace summary here.
-    </p>
+    <div className="p-empty">
+      <div className="p-empty__skeleton" aria-hidden="true">
+        <div className="p-skel p-skel--donut" />
+        <div className="p-skel__bars">
+          <div className="p-skel p-skel--bar" />
+          <div className="p-skel p-skel--bar" />
+          <div className="p-skel p-skel--bar" />
+        </div>
+      </div>
+      <p className="p-empty__msg">Trace states will appear here</p>
+      <p className="p-empty__hint">Open an AI answer to analyze its sourcing.</p>
+    </div>
   );
 }
 

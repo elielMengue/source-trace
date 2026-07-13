@@ -268,6 +268,87 @@ body {
   color: var(--st-muted);
 }
 
+/* ---- Empty state (animated skeleton) -------------------------------------- */
+.p-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 2px;
+  text-align: center;
+}
+.p-empty__skeleton {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+.p-skel {
+  position: relative;
+  overflow: hidden;
+  background: #eef0f5;
+  border-radius: 8px;
+}
+.p-skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.7),
+    transparent
+  );
+  animation: p-shimmer 1.4s ease-in-out infinite;
+}
+.p-skel--donut {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+}
+.p-skel__bars {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.p-skel--bar {
+  height: 12px;
+}
+.p-skel--bar:nth-child(1) {
+  width: 86%;
+}
+.p-skel--bar:nth-child(2) {
+  width: 64%;
+}
+.p-skel--bar:nth-child(3) {
+  width: 74%;
+}
+.p-empty__msg {
+  margin: 2px 0 0;
+  font-family: var(--st-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--st-ink);
+}
+.p-empty__hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--st-muted);
+}
+@keyframes p-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .p-skel::after {
+    animation: none;
+  }
+}
+
 /* ---- Language select ------------------------------------------------------ */
 .p-select {
   font-family: var(--st-ui);
