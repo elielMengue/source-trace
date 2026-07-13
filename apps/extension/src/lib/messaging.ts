@@ -28,8 +28,9 @@ export interface MessageResponses {
 }
 
 /** Sent from the popup to the active tab's content script (via chrome.tabs.sendMessage),
- * not to the background. The content script replies with its current report, or null. */
-export type PageMessage = { kind: "GET_PAGE_REPORT" };
+ * not to the background. GET_PAGE_REPORT asks for the current report; RE_ANALYZE forces a
+ * fresh analysis (e.g. after the language changed) so coaching tips re-localize in place. */
+export type PageMessage = { kind: "GET_PAGE_REPORT" } | { kind: "RE_ANALYZE" };
 export type PageReport = TraceReport | null;
 
 export function send<K extends Message["kind"]>(

@@ -18,6 +18,26 @@ async function getActivePageReport(): Promise<PageReport> {
   }
 }
 
+/** Tell the active tab to re-run its analysis (after the language changed) so the
+ * on-page coaching tips re-localize without a manual page refresh. Best-effort. */
+async function reAnalyzeActiveTab(): Promise<void> {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id != null) await chrome.tabs.sendMessage(tab.id, { kind: "RE_ANALYZE" } as PageMessage);
+  } catch {
+    // no content script in this tab — nothing to re-analyze
+  }
+}
+
+/** Coaching-tip languages the backend localizes (falls back to English otherwise). */
+const LANGUAGES: { code: string; label: string }[] = [
+  { code: "en", label: "English" },
+  { code: "fr", label: "Français" },
+  { code: "es", label: "Español" },
+];
+
+const langOf = (locale: string) => (locale || "en").replace("_", "-").split("-", 1)[0]!.toLowerCase();
+
 /** Popup (§4.4): current-page trace summary, session habit stats, privacy toggle. */
 export function App() {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -37,6 +57,13 @@ export function App() {
     const mode = settings.mode === "full" ? "heuristics_only" : "full";
     const next = await send({ kind: "SET_SETTINGS", patch: { mode } });
     setSettings(next);
+  };
+
+  const changeLanguage = async (code: string) => {
+    if (!settings || langOf(settings.locale) === code) return;
+    const next = await send({ kind: "SET_SETTINGS", patch: { locale: code } });
+    setSettings(next);
+    await reAnalyzeActiveTab(); // re-localize the on-page tips in place
   };
 
   if (!settings || !stats) return <div className="p-body">Loading…</div>;
@@ -85,6 +112,27 @@ export function App() {
           >
             <span className="p-switch__knob" />
           </button>
+        </div>
+      </section>
+
+      <section className="p-card">
+        <div className="p-row">
+          <div>
+            <div className="p-h2">Language</div>
+            <div className="p-note">Language of the coaching tips.</div>
+          </div>
+          <select
+            className="p-select"
+            aria-label="Coaching tips language"
+            value={langOf(settings.locale)}
+            onChange={(e) => void changeLanguage(e.target.value)}
+          >
+            {LANGUAGES.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.label}
+              </option>
+            ))}
+          </select>
         </div>
       </section>
 

@@ -267,3 +267,19 @@ body {
   font-size: 11px;
   color: var(--st-muted);
 }
+
+/* ---- Language select ------------------------------------------------------ */
+.p-select {
+  font-family: var(--st-ui);
+  font-size: 13px;
+  color: var(--st-ink);
+  background: #fff;
+  border: 1px solid var(--st-line);
+  border-radius: 9px;
+  padding: 7px 28px 7px 10px;
+  cursor: pointer;
+}
+.p-select:focus-visible {
+  outline: 2px solid var(--st-indigo);
+  outline-offset: 1px;
+}

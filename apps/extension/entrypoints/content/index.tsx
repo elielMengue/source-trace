@@ -57,9 +57,16 @@ export default defineContentScript({
     let latest: TraceReport | null = null;
     let current: TraceReport | null = null; // best report so far (provisional or authoritative)
 
-    // The popup asks the active tab for its current trace summary.
+    // The popup asks the active tab for its current trace summary, or tells it to
+    // re-analyze (e.g. the language changed) — resetting lastText so the unchanged answer
+    // text still re-runs, picking up the new locale for coaching tips.
     chrome.runtime.onMessage.addListener((msg: PageMessage, _sender, respond) => {
       if (msg?.kind === "GET_PAGE_REPORT") respond(current);
+      else if (msg?.kind === "RE_ANALYZE") {
+        lastText = "";
+        void analyze();
+        respond({ ok: true });
+      }
       return false;
     });
 
