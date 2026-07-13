@@ -13,16 +13,23 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   mode: "full",
   locale: typeof navigator !== "undefined" ? navigator.language : "en-US",
-  // Hosted st-api (Railway). Override in the popup to point at a local backend
-  // (http://127.0.0.1:8000) for development.
+  // Hosted st-api (Railway). For local development, change DEFAULT here and reload.
   apiBaseUrl: "https://st-api-production-31b6.up.railway.app",
 };
 
 const KEY = "settings";
 
+// Earlier builds defaulted apiBaseUrl to a local dev server. The backend is now hosted and
+// there is no UI to set a custom URL, so a stored localhost value is a stale default to
+// upgrade — not a deliberate user choice. Migrate it forward so Full mode / Deep trace reach
+// the hosted backend instead of an (offline) local one.
+const LEGACY_LOCAL_API = "http://127.0.0.1:8000";
+
 export async function getSettings(): Promise<Settings> {
   const stored = await chrome.storage.local.get(KEY);
-  return { ...DEFAULT_SETTINGS, ...(stored[KEY] as Partial<Settings> | undefined) };
+  const merged = { ...DEFAULT_SETTINGS, ...(stored[KEY] as Partial<Settings> | undefined) };
+  if (merged.apiBaseUrl === LEGACY_LOCAL_API) merged.apiBaseUrl = DEFAULT_SETTINGS.apiBaseUrl;
+  return merged;
 }
 
 export async function setSettings(patch: Partial<Settings>): Promise<Settings> {
