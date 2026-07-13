@@ -5,7 +5,8 @@
   --st-ink: #14182b;
   --st-indigo: #4457f0;
   --st-amber: #f6a623;
-  --st-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --st-ui: "IBM Plex Sans", "Noto Sans Hebrew", system-ui, -apple-system, "Segoe UI",
+    "Noto Serif", sans-serif;
   --st-display: "Space Grotesk", var(--st-ui);
 }
 
@@ -14,7 +15,8 @@
   --st-ink: #14182b;
   --st-indigo: #4457f0;
   --st-amber: #f6a623;
-  --st-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --st-ui: "IBM Plex Sans", "Noto Sans Hebrew", system-ui, -apple-system, "Segoe UI",
+    "Noto Serif", sans-serif;
   --st-display: "Space Grotesk", var(--st-ui);
 
   position: fixed;

@@ -30,3 +30,6 @@ Thumbs.db
 .coverage
 htmlcov/
 coverage.xml
+
+# Raw font downloads (staging) — only the subset woff2 in public/fonts ship
+apps/extension/src/fonts/

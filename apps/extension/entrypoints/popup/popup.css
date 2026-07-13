@@ -13,6 +13,21 @@
   font-style: normal;
   font-display: swap;
 }
+/* Script-coverage fallbacks (i18n). unicode-range keeps them off the network until a
+   matching glyph actually appears, so they cost nothing for Latin (en/fr/es) UI. */
+@font-face {
+  font-family: "Noto Sans Hebrew";
+  src: url("/fonts/noto-sans-hebrew.woff2") format("woff2");
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0590-05FF, U+FB1D-FB4F, U+200E-200F;
+}
+@font-face {
+  font-family: "Noto Serif";
+  src: url("/fonts/noto-serif.woff2") format("woff2");
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   color-scheme: light;
@@ -24,8 +39,10 @@
   --st-amber: #f6a623;
   --st-muted: #7a7f8c;
   --st-line: #e7e8ef;
-  /* Type */
-  --st-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Type. Noto fallbacks add Hebrew-script + broad serif coverage without touching the
+     Latin look (see unicode-range on their @font-face). */
+  --st-ui: "IBM Plex Sans", "Noto Sans Hebrew", system-ui, -apple-system, "Segoe UI",
+    "Noto Serif", sans-serif;
   --st-display: "Space Grotesk", var(--st-ui);
 }
 

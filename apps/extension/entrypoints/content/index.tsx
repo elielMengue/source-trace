@@ -132,12 +132,14 @@ export default defineContentScript({
  * can use them. No external CDN; degrades to system fonts if the page CSP blocks it. */
 async function loadBrandFonts(): Promise<void> {
   if (!("fonts" in document)) return;
-  const faces: [string, string, string][] = [
+
+  // Brand fonts are used on every overlay -> load eagerly.
+  const brand: [string, string, string][] = [
     ["IBM Plex Sans", "/fonts/ibm-plex-sans.woff2", "400 600"],
     ["Space Grotesk", "/fonts/space-grotesk.woff2", "500 700"],
   ];
   await Promise.all(
-    faces.map(async ([family, path, weight]) => {
+    brand.map(async ([family, path, weight]) => {
       try {
         const face = new FontFace(family, `url(${chrome.runtime.getURL(path)})`, {
           weight,
@@ -149,6 +151,30 @@ async function loadBrandFonts(): Promise<void> {
       }
     }),
   );
+
+  // i18n script-coverage fallbacks — registered but NOT loaded, so the browser fetches
+  // them only if a matching glyph (e.g. Hebrew) actually renders. unicode-range keeps
+  // Latin (en/fr/es) on the brand fonts, so these cost nothing in the common case.
+  const fallbacks: [string, string, FontFaceDescriptors][] = [
+    [
+      "Noto Sans Hebrew",
+      "/fonts/noto-sans-hebrew.woff2",
+      { unicodeRange: "U+0590-05FF, U+FB1D-FB4F, U+200E-200F" },
+    ],
+    ["Noto Serif", "/fonts/noto-serif.woff2", {}],
+  ];
+  for (const [family, path, desc] of fallbacks) {
+    try {
+      document.fonts.add(
+        new FontFace(family, `url(${chrome.runtime.getURL(path)})`, {
+          display: "swap",
+          ...desc,
+        }),
+      );
+    } catch {
+      // ignore — the fallback simply won't be available on this page
+    }
+  }
 }
 
 function debounce<T extends (...args: never[]) => void>(fn: T, ms: number): T {
