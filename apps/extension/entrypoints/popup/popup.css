@@ -285,26 +285,27 @@ body {
   color: var(--st-muted);
 }
 
-/* ---- Empty state (animated skeleton) -------------------------------------- */
+/* ---- Empty state (brief skeleton -> message) ------------------------------ */
 .p-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 4px 0 2px;
+  justify-content: center;
+  min-height: 72px; /* hold height so skeleton -> text doesn't shift the card */
+  padding: 2px 0;
   text-align: center;
 }
-.p-empty__skeleton {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+.p-skel__lines {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 .p-skel {
   position: relative;
   overflow: hidden;
   background: #eef0f5;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 .p-skel::after {
   content: "";
@@ -319,39 +320,30 @@ body {
   );
   animation: p-shimmer 1.4s ease-in-out infinite;
 }
-.p-skel--donut {
-  flex: 0 0 auto;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-}
-.p-skel__bars {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
 .p-skel--bar {
-  height: 12px;
+  height: 11px;
 }
 .p-skel--bar:nth-child(1) {
-  width: 86%;
+  width: 90%;
 }
 .p-skel--bar:nth-child(2) {
-  width: 64%;
+  width: 62%;
 }
 .p-skel--bar:nth-child(3) {
-  width: 74%;
+  width: 78%;
+}
+.p-empty__text {
+  animation: p-fade-in 260ms ease both;
 }
 .p-empty__msg {
-  margin: 2px 0 0;
+  margin: 0;
   font-family: var(--st-display);
   font-size: 13px;
   font-weight: 600;
   color: var(--st-ink);
 }
 .p-empty__hint {
-  margin: 0;
+  margin: 4px 0 0;
   font-size: 12px;
   color: var(--st-muted);
 }
@@ -360,8 +352,21 @@ body {
     transform: translateX(100%);
   }
 }
+@keyframes p-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .p-skel::after {
+    animation: none;
+  }
+  .p-empty__text {
     animation: none;
   }
 }

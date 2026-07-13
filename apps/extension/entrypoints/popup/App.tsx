@@ -187,22 +187,30 @@ function PageSummary({ report }: { report: TraceReport }) {
   );
 }
 
-/** Empty state: a shimmering skeleton that echoes the shape of the real summary
- * (donut + breakdown bars), so the panel feels alive while it waits for an answer.
+/** Empty state: a brief shimmering skeleton (lines only) that settles into a short
+ * message. The skeleton is a transient "looking…" beat, not a permanent state.
  * Deliberately site-agnostic — more AI sites are coming beyond Perplexity/ChatGPT. */
 function PageEmpty() {
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 1100);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <div className="p-empty">
-      <div className="p-empty__skeleton" aria-hidden="true">
-        <div className="p-skel p-skel--donut" />
-        <div className="p-skel__bars">
+      {loading ? (
+        <div className="p-skel__lines" aria-hidden="true">
           <div className="p-skel p-skel--bar" />
           <div className="p-skel p-skel--bar" />
           <div className="p-skel p-skel--bar" />
         </div>
-      </div>
-      <p className="p-empty__msg">Trace states will appear here</p>
-      <p className="p-empty__hint">Open an AI answer to analyze its sourcing.</p>
+      ) : (
+        <div className="p-empty__text">
+          <p className="p-empty__msg">Trace states will appear here</p>
+          <p className="p-empty__hint">Open an AI answer to analyze its sourcing.</p>
+        </div>
+      )}
     </div>
   );
 }
