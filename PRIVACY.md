@@ -1,33 +1,43 @@
 # Privacy Policy — Source-Trace
 
-_Last updated: 2026-07-12_
+_Last updated: 2026-07-14_
 
 Source-Trace is a browser extension, backed by an optional analysis service
 (`st-api`), that coaches you to trace the claims in an AI answer. This policy
 explains exactly what data the extension and the service handle, and what they
 do **not**.
 
-Source-Trace has **no user accounts, no advertising, no analytics or tracking,
-no cookies, and no sale of data**. There is nothing to log into.
+Source-Trace has **no user accounts, no advertising, no remote analytics or
+tracking, no cookies, and no sale of data**. There is nothing to log into. The
+extension keeps a few anonymous usage counters **locally on your device only**
+(see "What the extension stores"); they contain no content and never leave your
+browser.
 
 ## The short version
 
 - **Privacy mode runs fully on your device.** In this mode the extension never
   sends the content of an AI answer anywhere — all analysis happens locally in
-  your browser.
+  your browser. This is the **default**: nothing leaves your browser until you
+  explicitly enable Full mode.
 - **Full mode** sends the text of the answer you're viewing to the Source-Trace
   backend so it can be analyzed, and — only when you explicitly click **Deep
   trace** on a specific claim — to a third-party LLM with web search. You choose
-  the mode; you can switch to Privacy mode at any time.
+  the mode; you can switch back to Privacy mode at any time.
 - The backend keeps **no content database** and its logs contain **no answer
   text** — only content hashes, timing, and non-identifying counts.
 
 ## What the extension stores
 
 The extension uses the `storage` permission to keep your **settings only**:
-your chosen mode (privacy / full), your locale for coaching tips, and the API
-base URL. These live in `chrome.storage.local` on your device. **No answer
-content is ever stored by the extension.**
+your chosen mode (privacy / full), whether you've made that choice, your locale
+for coaching tips, and the API base URL. These live in `chrome.storage.local`
+on your device. **No answer content is ever stored by the extension.**
+
+The extension also keeps **anonymous usage counters** in the same local
+storage: the number of sessions, claims seen, traces started, and shares
+paused. These are plain counts shown to you in the popup ("This browser").
+They contain no page content, no identifiers, and are **never transmitted
+anywhere**; they are deleted when you uninstall the extension.
 
 The extension requests host access to the AI sites it supports
 (`perplexity.ai`, `chatgpt.com`, and their variants) so it can read the answer
@@ -82,6 +92,25 @@ Relevant provider policies:
 - Anthropic: https://www.anthropic.com/legal/privacy
 - Google: https://policies.google.com/privacy
 
+## Limited Use
+
+Source-Trace's use of information adheres to the [Chrome Web Store User Data
+Policy](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq),
+including the **Limited Use** requirements. Specifically:
+
+- Data received in Full mode or via Deep trace is used **only** to provide the
+  user-facing features described in this policy — analyzing the sourcing of an
+  AI answer and coaching you to trace it — and for no other purpose.
+- We do **not** sell user data, and we do not use or transfer it for serving
+  advertisements (including personalized, re-targeted, or interest-based
+  advertising) or for creditworthiness or lending purposes.
+- We do not read the data ourselves: it is processed automatically, and our
+  server logs are content-free (hashes, timings, and counts only), so there is
+  no stored content for us to review. The third-party LLM providers process it
+  under their own terms (see "Third-party processing"), and we request
+  zero-retention handling where the provider supports it. Any transfer beyond
+  the processing described here would only occur if required by applicable law.
+
 ## Data we never collect
 
 - No names, emails, or account identifiers (there are no accounts).
@@ -91,7 +120,8 @@ Relevant provider policies:
 
 ## Your controls
 
-- **Switch to Privacy mode** to keep everything on-device.
+- **Privacy mode is the default** — everything stays on-device until you choose
+  Full mode. Switch back to Privacy mode any time in the popup.
 - **Don't click Deep trace** if you don't want a claim sent to an LLM.
 - **Uninstall** the extension to remove all stored settings; clearing the
   browser's extension storage does the same.
