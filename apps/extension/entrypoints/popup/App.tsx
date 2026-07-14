@@ -55,7 +55,8 @@ export function App() {
   const toggleMode = async () => {
     if (!settings) return;
     const mode = settings.mode === "full" ? "heuristics_only" : "full";
-    const next = await send({ kind: "SET_SETTINGS", patch: { mode } });
+    // Flipping the switch is itself the affirmative mode choice (first-run consent).
+    const next = await send({ kind: "SET_SETTINGS", patch: { mode, modeChosen: true } });
     setSettings(next);
   };
 

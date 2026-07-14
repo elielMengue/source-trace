@@ -32,10 +32,14 @@ export default defineContentScript({
     void send({ kind: "EVENT", name: "sessions" });
     void loadBrandFonts();
 
-    // Learn the analysis mode so the overlay only offers deep trace in full mode (the
-    // action sends text to the backend; privacy mode must stay on-device — I2).
+    // Learn the analysis mode + whether the user has consented, so the overlay can offer
+    // deep trace (full only) and show the first-run consent banner until a choice is made.
     void send({ kind: "GET_STATE" })
-      .then((state) => useOverlay.getState().setMode(state.settings.mode))
+      .then((state) => {
+        const s = useOverlay.getState();
+        s.setMode(state.settings.mode);
+        s.setModeChosen(state.settings.modeChosen);
+      })
       .catch(() => {});
 
     const ui = await createShadowRootUi(ctx, {
@@ -113,6 +117,15 @@ export default defineContentScript({
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
     ctx.onInvalidated(() => observer.disconnect());
     ctx.onInvalidated(() => clearHighlights());
+
+    // The overlay's consent banner enables Full mode, then dispatches this event so the
+    // already-rendered answer is re-analyzed immediately (same isolated world as the UI).
+    const reanalyze = () => {
+      lastText = "";
+      void analyze();
+    };
+    window.addEventListener("st:reanalyze", reanalyze);
+    ctx.onInvalidated(() => window.removeEventListener("st:reanalyze", reanalyze));
 
     // Pre-share pause (§4.3): soft, dismissible — never blocks the copy.
     const onCopy = () => {

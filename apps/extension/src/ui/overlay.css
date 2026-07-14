@@ -357,6 +357,45 @@
 }
 .st-pause__text { flex: 1; font-size: 12px; }
 
+/* First-run consent — the disclosure + affirmative action shown before any network call.
+   Indigo (brand), not amber: it's an invitation, not a warning. Top of the panel body. */
+.st-consent {
+  margin: 10px 12px 0;
+  padding: 10px 12px;
+  background: #eef0fe;
+  border: 1px solid #d5d9fb;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.st-consent__text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.st-consent__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.st-btn--primary {
+  font-weight: 600;
+  color: #fff;
+  background: var(--st-indigo);
+  border-color: var(--st-indigo);
+}
+.st-btn--primary:hover {
+  background: #3647d6;
+}
+.st-consent__link {
+  font-size: 11px;
+  color: var(--st-indigo);
+  text-decoration: underline;
+  margin-left: auto;
+}
+
 .st-foot {
   border-top: 1px solid #eee;
   padding: 8px 12px;

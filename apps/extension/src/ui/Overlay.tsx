@@ -48,6 +48,8 @@ export function Overlay() {
 
       {!collapsed && (
         <>
+          <ConsentBanner />
+
           {report.flags.length > 0 && (
             <div className="st-flags">
               {report.flags.map((f) => (
@@ -92,8 +94,56 @@ export function Overlay() {
   );
 }
 
+/** First-run consent (§8 / CWS): everything runs on-device until the user makes an
+ * affirmative choice here. "Enable Full mode" is the disclosure + action required before
+ * any answer text is sent to the backend. Dismissed forever once a choice is made. */
+function ConsentBanner() {
+  const modeChosen = useOverlay((s) => s.modeChosen);
+  if (modeChosen) return null;
+
+  const enableFull = async () => {
+    const s = useOverlay.getState();
+    await send({ kind: "SET_SETTINGS", patch: { mode: "full", modeChosen: true } });
+    s.setMode("full");
+    s.setModeChosen(true);
+    // Re-analyze the answer already on screen so the full report loads immediately.
+    window.dispatchEvent(new CustomEvent("st:reanalyze"));
+  };
+  const stayLocal = async () => {
+    await send({ kind: "SET_SETTINGS", patch: { modeChosen: true } });
+    useOverlay.getState().setModeChosen(true);
+  };
+
+  return (
+    <section className="st-consent" role="region" aria-label="Choose analysis mode">
+      <p className="st-consent__text">
+        <strong>Choose your analysis mode.</strong> Right now everything runs on your
+        device. Full mode sends the answer text to our zero-retention analysis service for
+        deeper claim analysis — nothing is stored.
+      </p>
+      <div className="st-consent__actions">
+        <button className="st-btn st-btn--primary" onClick={enableFull}>
+          Enable Full mode
+        </button>
+        <button className="st-btn" onClick={stayLocal}>
+          Stay on-device
+        </button>
+        <a
+          className="st-consent__link"
+          href="https://github.com/elielMengue/source-trace/blob/main/PRIVACY.md"
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          Privacy policy
+        </a>
+      </div>
+    </section>
+  );
+}
+
 function ClaimCard({ claim, sources }: { claim: Claim; sources: Source[] }) {
-  const mode = useOverlay((s) => s.mode);
+  // "Effective full mode" = Full chosen AND consented; gates the network-bound deep trace.
+  const fullMode = useOverlay((s) => s.mode === "full" && s.modeChosen);
   const deep = useOverlay((s) => s.deep);
   const tracingThis = deep?.status === "loading" && deep.claim === claim.text;
   const onTrace = () => void send({ kind: "EVENT", name: "traces_initiated" });
@@ -165,7 +215,7 @@ function ClaimCard({ claim, sources }: { claim: Claim; sources: Source[] }) {
           {/* Deep trace sends the claim to the backend, so it's offered in full mode only
               (privacy mode stays on-device — I2). The result opens as a separate floating
               chat bubble; the instant links above always remain. */}
-          {mode === "full" && (
+          {fullMode && (
             <button
               className="st-btn st-btn--deep"
               disabled={tracingThis}

@@ -1,7 +1,7 @@
 import { analyze, deepTrace } from "../src/lib/api";
 import { localReport } from "../src/lib/heuristics";
 import type { Message, MessageResponses } from "../src/lib/messaging";
-import { getSettings, setSettings } from "../src/lib/settings";
+import { fullModeActive, getSettings, setSettings } from "../src/lib/settings";
 import { bumpStat, getStats } from "../src/lib/session";
 import type { DeepTraceResult, TraceReport } from "../src/lib/types";
 
@@ -39,8 +39,10 @@ export default defineBackground(() => {
         return report;
 
         async function runAnalysis(m: Extract<Message, { kind: "ANALYZE" }>): Promise<TraceReport> {
-          // heuristics_only never leaves the browser (ADR-1): no network call at all.
-          if (settings.mode === "heuristics_only") return localReport(m.extraction);
+          // No network before consent (by construction, not just UI): stay on-device unless
+          // the user has explicitly chosen Full mode. heuristics_only never leaves the
+          // browser either (ADR-1). Either way -> no network call at all.
+          if (!fullModeActive(settings)) return localReport(m.extraction);
 
           const key = await cacheKey(m, settings.locale);
           const hit = cache.get(key);
@@ -63,8 +65,8 @@ export default defineBackground(() => {
       }
       case "DEEP_TRACE": {
         const settings = await getSettings();
-        // Privacy mode never leaves the browser (I2) — no deep trace, keep the local link.
-        if (settings.mode === "heuristics_only") return DEEP_TRACE_UNAVAILABLE;
+        // No network before consent, and never in privacy mode (I2) — keep the local link.
+        if (!fullModeActive(settings)) return DEEP_TRACE_UNAVAILABLE;
         try {
           const result = await deepTrace(
             settings.apiBaseUrl,

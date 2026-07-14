@@ -4,6 +4,9 @@ import type { AnalyzeMode } from "./types";
 export interface Settings {
   /** Privacy mode: full sends text to st-api; heuristics_only never leaves the browser. */
   mode: AnalyzeMode;
+  /** True once the user has explicitly picked a mode (first-run consent). Until then,
+   * Full mode is treated as on-device so nothing is sent before an affirmative action. */
+  modeChosen: boolean;
   /** BCP-47 locale for coaching tips; defaults to the browser UI language. */
   locale: string;
   /** st-api origin. */
@@ -11,11 +14,21 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  mode: "full",
+  // Default to on-device: nothing leaves the browser until the user opts into Full mode
+  // via the first-run consent prompt (Chrome Web Store: disclosure + action before send).
+  mode: "heuristics_only",
+  modeChosen: false,
   locale: typeof navigator !== "undefined" ? navigator.language : "en-US",
   // Hosted st-api (Railway). For local development, change DEFAULT here and reload.
   apiBaseUrl: "https://st-api-production-31b6.up.railway.app",
 };
+
+/** Single source of truth for "may answer content be sent to the backend?". Full mode is
+ * effective only once the user has explicitly consented — so no network happens before an
+ * affirmative choice, by construction (not just by UI flow). */
+export function fullModeActive(settings: Pick<Settings, "mode" | "modeChosen">): boolean {
+  return settings.mode === "full" && settings.modeChosen;
+}
 
 const KEY = "settings";
 
