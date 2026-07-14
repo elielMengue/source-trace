@@ -422,6 +422,10 @@
 }
 .st-mode__opt {
   flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   font: inherit;
   font-size: 11px;
   padding: 4px 8px;
@@ -431,6 +435,9 @@
   color: #7a7f8c;
   cursor: pointer;
   white-space: nowrap;
+}
+.st-mode__icon {
+  flex: 0 0 auto;
 }
 .st-mode__opt.is-active {
   background: #fff;

@@ -88,6 +88,49 @@ export function Overlay() {
   );
 }
 
+/** On-device (privacy) — a padlock. Inherits the button's text color via currentColor. */
+function LockIcon() {
+  return (
+    <svg
+      className="st-mode__icon"
+      width="12"
+      height="12"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <rect x="3.25" y="7" width="9.5" height="6.5" rx="1.6" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M5.5 7V5.1a2.5 2.5 0 0 1 5 0V7"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** Full mode (hosted backend) — a cloud. Inherits the button's text color. */
+function CloudIcon() {
+  return (
+    <svg
+      className="st-mode__icon"
+      width="15"
+      height="12"
+      viewBox="0 0 20 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M6.2 13h8.3a3.4 3.4 0 0 0 .5-6.77 5 5 0 0 0-9.55-1.1A3.85 3.85 0 0 0 6.2 13Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Compact analysis-mode switch, right in the panel — so a user can go on-device for a
  * sensitive topic (or back to Full) without opening the popup. Switching re-analyzes in
  * place. Setting the mode here also counts as the first-run choice (modeChosen). */
@@ -112,14 +155,14 @@ function ModeToggle() {
         aria-pressed={mode === "heuristics_only"}
         onClick={() => pick("heuristics_only")}
       >
-        🔒 {s.modeOnDevice}
+        <LockIcon /> {s.modeOnDevice}
       </button>
       <button
         className={`st-mode__opt${mode === "full" ? " is-active" : ""}`}
         aria-pressed={mode === "full"}
         onClick={() => pick("full")}
       >
-        ☁ {s.modeFull}
+        <CloudIcon /> {s.modeFull}
       </button>
     </div>
   );
