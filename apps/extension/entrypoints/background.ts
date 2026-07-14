@@ -42,7 +42,7 @@ export default defineBackground(() => {
           // No network before consent (by construction, not just UI): stay on-device unless
           // the user has explicitly chosen Full mode. heuristics_only never leaves the
           // browser either (ADR-1). Either way -> no network call at all.
-          if (!fullModeActive(settings)) return localReport(m.extraction);
+          if (!fullModeActive(settings)) return localReport(m.extraction, settings.locale);
 
           const key = await cacheKey(m, settings.locale);
           const hit = cache.get(key);
@@ -59,7 +59,7 @@ export default defineBackground(() => {
             return report;
           } catch {
             // Graceful degradation (I3): a failed backend never blocks reading.
-            return localReport(m.extraction);
+            return localReport(m.extraction, settings.locale);
           }
         }
       }

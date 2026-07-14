@@ -2,16 +2,11 @@ import { useRef, useState } from "react";
 import { publisherHint } from "../lib/publisher";
 import type { Claim, Relevance, Source, TraceReport } from "../lib/types";
 import { send } from "../lib/messaging";
-import {
-  buildVerificationNote,
-  FLAG_LABEL,
-  reverseSearchUrl,
-  secondSourceUrl,
-  sourceLabel,
-  STATUS_LABEL,
-} from "./format";
+import { buildVerificationNote, reverseSearchUrl, secondSourceUrl, sourceLabel } from "./format";
 import { Glyph } from "./Logo";
 import { useOverlay } from "./store";
+import { t } from "../lib/i18n";
+import type { AnalyzeMode } from "../lib/types";
 
 /**
  * Injected overlay (§4.3). Renders the Trace Report as a coaching panel: per-claim
@@ -19,9 +14,11 @@ import { useOverlay } from "./store";
  * truth — only whether a claim has visible sourcing (I1).
  */
 export function Overlay() {
-  const { report, provisional, showPause, collapsed, setCollapsed, setPause } = useOverlay();
+  const { report, provisional, showPause, collapsed, setCollapsed, setPause, locale } =
+    useOverlay();
   if (!report) return null;
 
+  const s = t(locale);
   const scorePct = Math.round(report.traceScore * 100);
 
   return (
@@ -32,14 +29,14 @@ export function Overlay() {
           <Glyph size={18} />
         </span>
         <span className="st-title">Source-Trace</span>
-        {provisional && <span className="st-provisional" aria-live="polite">analyzing…</span>}
-        <span className="st-score" title="Share of claims with a visible source (not truth)">
+        {provisional && <span className="st-provisional" aria-live="polite">{s.analyzing}</span>}
+        <span className="st-score" title={s.scoreTitle}>
           {scorePct}%
         </span>
         <button
           className="st-icon-btn"
           aria-expanded={!collapsed}
-          aria-label={collapsed ? "Expand panel" : "Collapse panel"}
+          aria-label={collapsed ? s.expand : s.collapse}
           onClick={() => setCollapsed(!collapsed)}
         >
           {collapsed ? "▸" : "▾"}
@@ -53,13 +50,13 @@ export function Overlay() {
           {report.flags.length > 0 && (
             <div className="st-flags">
               {report.flags.map((f) => (
-                <span key={f} className="st-flag">{FLAG_LABEL[f]}</span>
+                <span key={f} className="st-flag">{s[`flag_${f}` as keyof typeof s]}</span>
               ))}
             </div>
           )}
 
           <div className="st-claims">
-            {report.claims.length === 0 && <p>No checkable claims detected.</p>}
+            {report.claims.length === 0 && <p>{s.noClaims}</p>}
             {report.claims.map((c) => (
               <ClaimCard
                 key={c.id}
@@ -73,18 +70,15 @@ export function Overlay() {
 
           {showPause && (
             <div className="st-pause" role="alertdialog" aria-label="Pre-share check">
-              <span className="st-pause__text">
-                Some claims here have no visible source. Consider tracing them before sharing.
-              </span>
-              <button className="st-btn" onClick={() => setPause(false)}>Dismiss</button>
+              <span className="st-pause__text">{s.pauseText}</span>
+              <button className="st-btn" onClick={() => setPause(false)}>{s.dismiss}</button>
             </div>
           )}
 
           <div className="st-foot">
+            <ModeToggle />
             <VerificationNote report={report} />
-            <p className="st-disclosure">
-              Analysis is AI-assisted and describes visible sourcing, not truth.
-            </p>
+            <p className="st-disclosure">{s.disclosure}</p>
           </div>
         </>
       )}
@@ -94,11 +88,50 @@ export function Overlay() {
   );
 }
 
+/** Compact analysis-mode switch, right in the panel — so a user can go on-device for a
+ * sensitive topic (or back to Full) without opening the popup. Switching re-analyzes in
+ * place. Setting the mode here also counts as the first-run choice (modeChosen). */
+function ModeToggle() {
+  const mode = useOverlay((st) => st.mode);
+  const locale = useOverlay((st) => st.locale);
+  const s = t(locale);
+
+  const pick = async (next: AnalyzeMode) => {
+    if (next === mode) return;
+    await send({ kind: "SET_SETTINGS", patch: { mode: next, modeChosen: true } });
+    const store = useOverlay.getState();
+    store.setMode(next);
+    store.setModeChosen(true);
+    window.dispatchEvent(new CustomEvent("st:reanalyze"));
+  };
+
+  return (
+    <div className="st-mode" role="group" aria-label={s.modeGroup}>
+      <button
+        className={`st-mode__opt${mode === "heuristics_only" ? " is-active" : ""}`}
+        aria-pressed={mode === "heuristics_only"}
+        onClick={() => pick("heuristics_only")}
+      >
+        🔒 {s.modeOnDevice}
+      </button>
+      <button
+        className={`st-mode__opt${mode === "full" ? " is-active" : ""}`}
+        aria-pressed={mode === "full"}
+        onClick={() => pick("full")}
+      >
+        ☁ {s.modeFull}
+      </button>
+    </div>
+  );
+}
+
 /** First-run consent (§8 / CWS): everything runs on-device until the user makes an
  * affirmative choice here. "Enable Full mode" is the disclosure + action required before
  * any answer text is sent to the backend. Dismissed forever once a choice is made. */
 function ConsentBanner() {
-  const modeChosen = useOverlay((s) => s.modeChosen);
+  const modeChosen = useOverlay((st) => st.modeChosen);
+  const locale = useOverlay((st) => st.locale);
+  const tr = t(locale);
   if (modeChosen) return null;
 
   const enableFull = async () => {
@@ -115,18 +148,16 @@ function ConsentBanner() {
   };
 
   return (
-    <section className="st-consent" role="region" aria-label="Choose analysis mode">
+    <section className="st-consent" role="region" aria-label={tr.consentTitle}>
       <p className="st-consent__text">
-        <strong>Choose your analysis mode.</strong> Right now everything runs on your
-        device. Full mode sends the answer text to our zero-retention analysis service for
-        deeper claim analysis — nothing is stored.
+        <strong>{tr.consentTitle}</strong> {tr.consentBody}
       </p>
       <div className="st-consent__actions">
         <button className="st-btn st-btn--primary" onClick={enableFull}>
-          Enable Full mode
+          {tr.consentEnable}
         </button>
         <button className="st-btn" onClick={stayLocal}>
-          Stay on-device
+          {tr.consentStay}
         </button>
         <a
           className="st-consent__link"
@@ -134,7 +165,7 @@ function ConsentBanner() {
           target="_blank"
           rel="noreferrer noopener"
         >
-          Privacy policy
+          {tr.privacyPolicy}
         </a>
       </div>
     </section>
@@ -143,8 +174,9 @@ function ConsentBanner() {
 
 function ClaimCard({ claim, sources }: { claim: Claim; sources: Source[] }) {
   // "Effective full mode" = Full chosen AND consented; gates the network-bound deep trace.
-  const fullMode = useOverlay((s) => s.mode === "full" && s.modeChosen);
-  const deep = useOverlay((s) => s.deep);
+  const fullMode = useOverlay((st) => st.mode === "full" && st.modeChosen);
+  const deep = useOverlay((st) => st.deep);
+  const tr = t(useOverlay((st) => st.locale));
   const tracingThis = deep?.status === "loading" && deep.claim === claim.text;
   const onTrace = () => void send({ kind: "EVENT", name: "traces_initiated" });
 
@@ -162,7 +194,7 @@ function ClaimCard({ claim, sources }: { claim: Claim; sources: Source[] }) {
 
   return (
     <article className={`st-claim st-claim--${claim.status}`}>
-      <div className="st-claim__status">{STATUS_LABEL[claim.status]}</div>
+      <div className="st-claim__status">{tr[`status_${claim.status}` as keyof typeof tr]}</div>
       <p className="st-claim__text">{truncate(claim.text, 160)}</p>
       {sources.length > 0 && (
         <div className="st-claim__sources">
@@ -200,7 +232,7 @@ function ClaimCard({ claim, sources }: { claim: Claim; sources: Source[] }) {
               rel="noreferrer noopener"
               onClick={onTrace}
             >
-              Trace this
+              {tr.traceThis}
             </a>
             <a
               className="st-btn"
@@ -209,7 +241,7 @@ function ClaimCard({ claim, sources }: { claim: Claim; sources: Source[] }) {
               rel="noreferrer noopener"
               onClick={onTrace}
             >
-              Find a second source
+              {tr.secondSource}
             </a>
           </div>
           {/* Deep trace sends the claim to the backend, so it's offered in full mode only
@@ -221,7 +253,7 @@ function ClaimCard({ claim, sources }: { claim: Claim; sources: Source[] }) {
               disabled={tracingThis}
               onClick={runDeep}
             >
-              {tracingThis ? "Tracing…" : "✨ Deep trace"}
+              {tracingThis ? tr.tracing : tr.deepTrace}
             </button>
           )}
         </>
@@ -234,8 +266,9 @@ function ClaimCard({ claim, sources }: { claim: Claim; sources: Source[] }) {
  * (bottom-left, scrollable, dismissible). It surfaces independent sources with a neutral,
  * attributed note each — never a truth verdict (I1). */
 function DeepTraceBubble() {
-  const deep = useOverlay((s) => s.deep);
-  const closeDeep = useOverlay((s) => s.closeDeep);
+  const deep = useOverlay((st) => st.deep);
+  const closeDeep = useOverlay((st) => st.closeDeep);
+  const tr = t(useOverlay((st) => st.locale));
   const asideRef = useRef<HTMLElement>(null);
   // Explicit position once the user has dragged the bubble; null = default CSS anchor
   // (bottom-left). Persisted across opens so the bubble stays where the user put it.
@@ -285,28 +318,26 @@ function DeepTraceBubble() {
         <span className="st-brand-glyph">
           <Glyph size={16} />
         </span>
-        <span className="st-bubble__title">Deep trace</span>
-        <span className="st-bubble__grip" aria-hidden="true" title="Drag to move">
+        <span className="st-bubble__title">{tr.deepTitle}</span>
+        <span className="st-bubble__grip" aria-hidden="true" title={tr.dragMove}>
           ⠿
         </span>
-        <button className="st-icon-btn" aria-label="Close deep trace" onClick={closeDeep}>
+        <button className="st-icon-btn" aria-label={tr.closeDeep} onClick={closeDeep}>
           ✕
         </button>
       </header>
       <div className="st-bubble__body">
-        <p className="st-bubble__claim">Tracing: “{truncate(claim, 180)}”</p>
+        <p className="st-bubble__claim">{tr.tracingLabel} “{truncate(claim, 180)}”</p>
 
         {status === "loading" && (
           <div className="st-deep st-deep--busy" role="status" aria-live="polite">
             <span className="st-spinner" aria-hidden="true" />
-            <span>Searching independent sources…</span>
+            <span>{tr.searching}</span>
           </div>
         )}
 
         {status === "unavailable" && (
-          <p className="st-deep__note">
-            Deep trace isn’t available right now — use the Trace links in the panel instead.
-          </p>
+          <p className="st-deep__note">{tr.deepUnavailable}</p>
         )}
 
         {status === "done" && result && (
@@ -356,6 +387,7 @@ function RelevanceBars({ level }: { level: Relevance }) {
 function VerificationNote({ report }: { report: TraceReport }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const tr = t(useOverlay((st) => st.locale));
   const note = buildVerificationNote(report);
   const onCopy = async () => {
     await copyText(note);
@@ -369,13 +401,13 @@ function VerificationNote({ report }: { report: TraceReport }) {
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        {open ? "Hide verification note ▴" : "See verification note ▾"}
+        {open ? tr.hideNote : tr.seeNote}
       </button>
       {open && (
         <div className="st-note__panel">
           <pre className="st-note__text">{note}</pre>
           <button className="st-btn st-note__copy" onClick={onCopy}>
-            {copied ? "Copied ✓" : "Copy"}
+            {copied ? tr.copied : tr.copy}
           </button>
         </div>
       )}

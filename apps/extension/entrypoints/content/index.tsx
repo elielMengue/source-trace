@@ -32,15 +32,20 @@ export default defineContentScript({
     void send({ kind: "EVENT", name: "sessions" });
     void loadBrandFonts();
 
-    // Learn the analysis mode + whether the user has consented, so the overlay can offer
-    // deep trace (full only) and show the first-run consent banner until a choice is made.
-    void send({ kind: "GET_STATE" })
-      .then((state) => {
+    // Learn the mode / consent / locale so the overlay can gate deep trace, show the
+    // first-run consent banner, and localize its UI strings.
+    const syncSettings = async () => {
+      try {
+        const state = await send({ kind: "GET_STATE" });
         const s = useOverlay.getState();
         s.setMode(state.settings.mode);
         s.setModeChosen(state.settings.modeChosen);
-      })
-      .catch(() => {});
+        s.setLocale(state.settings.locale);
+      } catch {
+        // background unreachable — keep defaults
+      }
+    };
+    void syncSettings();
 
     const ui = await createShadowRootUi(ctx, {
       name: "source-trace-ui",
@@ -67,8 +72,10 @@ export default defineContentScript({
     chrome.runtime.onMessage.addListener((msg: PageMessage, _sender, respond) => {
       if (msg?.kind === "GET_PAGE_REPORT") respond(current);
       else if (msg?.kind === "RE_ANALYZE") {
+        // Refresh mode/locale first (e.g. language or mode changed), then re-run so both
+        // the localized UI strings and the report reflect the new settings.
         lastText = "";
-        void analyze();
+        void syncSettings().then(() => analyze());
         respond({ ok: true });
       }
       return false;
@@ -93,7 +100,7 @@ export default defineContentScript({
       useOverlay.getState().setAnswerText(extraction.text);
 
       // I3: paint provisional (local) immediately, then reconcile with the authoritative report.
-      const provisional = localReport(extraction);
+      const provisional = localReport(extraction, useOverlay.getState().locale);
       current = provisional;
       useOverlay.getState().setReport(provisional, true);
       applyHighlights(node, adapter.selectors, provisional.claims);
@@ -118,11 +125,12 @@ export default defineContentScript({
     ctx.onInvalidated(() => observer.disconnect());
     ctx.onInvalidated(() => clearHighlights());
 
-    // The overlay's consent banner enables Full mode, then dispatches this event so the
-    // already-rendered answer is re-analyzed immediately (same isolated world as the UI).
+    // The overlay's consent banner / mode toggle change settings, then dispatch this event
+    // so the already-rendered answer is re-analyzed immediately (same isolated world as the
+    // UI). Re-sync settings first so the store's mode/locale drive the fresh render.
     const reanalyze = () => {
       lastText = "";
-      void analyze();
+      void syncSettings().then(() => analyze());
     };
     window.addEventListener("st:reanalyze", reanalyze);
     ctx.onInvalidated(() => window.removeEventListener("st:reanalyze", reanalyze));

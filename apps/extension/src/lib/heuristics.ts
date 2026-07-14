@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 import type { Claim, ClaimStatus, Extraction, ProvisionalReport, Source, TraceFlag } from "./types";
 
 /**
@@ -48,7 +49,8 @@ function matchLinks(claim: string, links: Extraction["links"]): number[] {
 
 const STATUS_WEIGHT: Record<ClaimStatus, number> = { supported: 1, weak: 0.5, unsupported: 0 };
 
-export function localReport(extraction: Extraction, maxClaims = 20): ProvisionalReport {
+export function localReport(extraction: Extraction, locale = "en", maxClaims = 20): ProvisionalReport {
+  const tr = t(locale);
   const { text, links, citations } = extraction;
   const sentences = splitSentences(text).filter((s) => isClaimLike(s.text)).slice(0, maxClaims);
 
@@ -108,10 +110,7 @@ export function localReport(extraction: Extraction, maxClaims = 20): Provisional
         : hasChip
           ? "A source is cited here; its link isn't exposed on the page."
           : "No citation found yet.",
-      traceTip:
-        matched.length || hasChip
-          ? "Open the cited source and confirm it."
-          : "Look for a primary source for this.",
+      traceTip: matched.length || hasChip ? tr.tipOpenSource : tr.tipFindPrimary,
       span: { start: s.start, end: s.end },
     };
   });

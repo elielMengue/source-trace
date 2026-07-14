@@ -20,6 +20,8 @@ interface OverlayState {
   /** Whether the user has made the first-run mode choice. Until then we show the consent
    * banner and treat everything as on-device (no network before an affirmative action). */
   modeChosen: boolean;
+  /** BCP-47 locale driving the localized UI strings (labels, buttons, tips). */
+  locale: string;
   /** The current answer's text — passed as grounding context to the deep-trace action. */
   answerText: string;
   /** The open deep-trace bubble, or null when closed. */
@@ -32,6 +34,7 @@ interface OverlayState {
   setSourceSite: (site: SourceSite) => void;
   setMode: (mode: AnalyzeMode) => void;
   setModeChosen: (chosen: boolean) => void;
+  setLocale: (locale: string) => void;
   setAnswerText: (text: string) => void;
   openDeep: (claim: string) => void;
   setDeepResult: (status: DeepStatus, result: DeepTraceResult | null) => void;
@@ -46,6 +49,7 @@ export const useOverlay = create<OverlayState>((set) => ({
   sourceSite: null,
   mode: "heuristics_only",
   modeChosen: false,
+  locale: typeof navigator !== "undefined" ? navigator.language : "en",
   answerText: "",
   deep: null,
   showPause: false,
@@ -54,6 +58,7 @@ export const useOverlay = create<OverlayState>((set) => ({
   setSourceSite: (sourceSite) => set({ sourceSite }),
   setMode: (mode) => set({ mode }),
   setModeChosen: (modeChosen) => set({ modeChosen }),
+  setLocale: (locale) => set({ locale }),
   setAnswerText: (answerText) => set({ answerText }),
   openDeep: (claim) => set({ deep: { status: "loading", claim, result: null } }),
   setDeepResult: (status, result) =>
