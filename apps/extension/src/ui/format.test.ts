@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TraceReport } from "../lib/types";
-import { buildVerificationNote } from "./format";
+import { buildVerificationNote, reverseSearchUrl, secondSourceUrl } from "./format";
 
 const report: TraceReport = {
   traceReportId: `sha256:${"0".repeat(64)}`,
@@ -48,5 +48,28 @@ describe("buildVerificationNote", () => {
     const note = buildVerificationNote(report);
     const betaLine = note.split("\n").findIndex((l) => l.includes("Beta claim"));
     expect(note.split("\n")[betaLine + 1]).not.toContain("sources:");
+  });
+});
+
+describe("search URLs", () => {
+  const longClaim =
+    "Regular meditation is linked with lower stress and several measurable physical " +
+    "benefits, especially for the heart, brain, and immune system over time.";
+
+  it("does not force an exact-phrase quote (which lands on Google 'no results')", () => {
+    const url = reverseSearchUrl(longClaim);
+    const q = decodeURIComponent(new URL(url).searchParams.get("q")!);
+    expect(q).not.toContain('"'); // no exact-phrase quoting
+  });
+
+  it("trims a long claim to its first words at a word boundary", () => {
+    const q = decodeURIComponent(new URL(reverseSearchUrl(longClaim)).searchParams.get("q")!);
+    expect(q.split(/\s+/).length).toBeLessThanOrEqual(16);
+    expect(longClaim).toContain(q.split(" -site:")[0]!); // a real prefix, no mid-word cut
+  });
+
+  it("second-source query steers away from the usual first hit", () => {
+    const q = decodeURIComponent(new URL(secondSourceUrl(longClaim)).searchParams.get("q")!);
+    expect(q).toContain("-site:wikipedia.org");
   });
 });

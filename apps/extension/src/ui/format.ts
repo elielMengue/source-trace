@@ -52,14 +52,20 @@ export function sourceLabel(s: Source): string {
   }
 }
 
-/** A trace action: reverse-search the claim phrase for a primary source. */
-export function reverseSearchUrl(claimText: string): string {
-  const q = claimText.length > 120 ? claimText.slice(0, 120) : claimText;
-  return `https://www.google.com/search?q=${encodeURIComponent(`"${q}"`)}`;
+/** Trim a claim to a keyword query at a word boundary. A full quoted sentence rarely
+ * matches verbatim (the AI paraphrases, and truncation cut mid-word), which lands on
+ * Google's "no results" page — so: no exact-phrase quotes, the first ~16 words. */
+function claimQuery(claimText: string): string {
+  return claimText.trim().split(/\s+/).slice(0, 16).join(" ");
 }
 
-/** "Find a second source" — same phrase, encourage a different origin. */
+/** A trace action: search the claim's key terms for a primary source. */
+export function reverseSearchUrl(claimText: string): string {
+  return `https://www.google.com/search?q=${encodeURIComponent(claimQuery(claimText))}`;
+}
+
+/** "Find a second source" — same terms, steer away from the usual first hit. */
 export function secondSourceUrl(claimText: string): string {
-  const q = claimText.length > 120 ? claimText.slice(0, 120) : claimText;
-  return `https://www.google.com/search?q=${encodeURIComponent(`${q} -site:wikipedia.org`)}`;
+  const q = `${claimQuery(claimText)} -site:wikipedia.org`;
+  return `https://www.google.com/search?q=${encodeURIComponent(q)}`;
 }
