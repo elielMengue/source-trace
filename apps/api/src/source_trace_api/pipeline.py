@@ -18,7 +18,6 @@ from .cache import content_hash
 from .citations import assign_citations_to_spans, match_claim_to_links
 from .claims import extract_claims
 from .coach import trace_tip
-from .config import settings
 from .contracts import (
     AnalyzeMode,
     AnalyzeRequest,

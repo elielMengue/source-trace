@@ -39,9 +39,8 @@ class FailingExtractor:
         raise RuntimeError("provider down")
 
 
-async def test_llm_claims_are_used_and_engine_records_model(monkeypatch):
-    # Give the pipeline a key so network verification path is exercised (but no links).
-    monkeypatch.setattr("source_trace_api.pipeline.settings.llm_api_key", "test-key")
+async def test_llm_claims_are_used_and_engine_records_model():
+    # Full mode with an extractor but no links: verify_links([]) makes no network call.
     claim = LlmClaim(
         text="Rayleigh scattering makes the sky appear blue.",
         start=0,
@@ -83,8 +82,7 @@ async def test_llm_relevance_propagates_to_source(monkeypatch):
     assert report.claims[0].matchedSourceIndexes == [0]
 
 
-async def test_llm_failure_falls_back_to_heuristics(monkeypatch):
-    monkeypatch.setattr("source_trace_api.pipeline.settings.llm_api_key", "test-key")
+async def test_llm_failure_falls_back_to_heuristics():
     report = await analyze(_request(), extractor=FailingExtractor())
     assert report.engine.llm is None  # fell back
     assert len(report.claims) >= 1  # deterministic extraction still produced claims
@@ -93,9 +91,8 @@ async def test_llm_failure_falls_back_to_heuristics(monkeypatch):
 async def test_positional_citation_verified_live_is_supported(monkeypatch):
     """The full-mode green path: a positional citation whose source verifies live turns
     its claim SUPPORTED. Network is mocked at the verify_links seam (the verifier's own
-    SSRF/liveness behaviour is covered by test_verifier_ssrf)."""
-    # No LLM key set: full mode still verifies liveness, so the green path works LLM-free.
-    monkeypatch.setattr("source_trace_api.pipeline.settings.llm_api_key", None)
+    SSRF/liveness behaviour is covered by test_verifier_ssrf). No LLM key is involved —
+    full mode verifies liveness on its own, so the green path works LLM-free."""
 
     async def fake_verify(links, *, network):
         assert network is True  # full mode -> network verification is on (key or not)
