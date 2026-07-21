@@ -1,5 +1,6 @@
 import ReactDOM from "react-dom/client";
 import { adapterFor } from "../../src/adapters";
+import { pickAnswerNode } from "../../src/adapters/pick";
 import { localReport } from "../../src/lib/heuristics";
 import { send } from "../../src/lib/messaging";
 import type { Extraction, TraceReport } from "../../src/lib/types";
@@ -82,17 +83,8 @@ export default defineContentScript({
     });
 
     const analyze = debounce(async () => {
-      const nodes = adapter.findAnswerNodes(document);
-      if (nodes.length === 0) return; // nothing to analyze yet — stay silent
-      // Adapters may match several blocks: sub-items (Perplexity marks each list bullet
-      // `.prose` too) AND, in a multi-turn thread, every past answer. Take the LAST node
-      // with substantial text — the most recent real answer — which skips short bullets
-      // yet still re-analyzes each follow-up (picking the globally-longest node froze
-      // analysis on the first, longest answer of the conversation).
-      const substantial = nodes.filter((n) => (n.innerText ?? "").length >= MIN_ANSWER_CHARS);
-      const node = (substantial.length ? substantial : nodes)[
-        (substantial.length ? substantial : nodes).length - 1
-      ]!;
+      const node = pickAnswerNode(adapter.findAnswerNodes(document), MIN_ANSWER_CHARS);
+      if (!node) return; // nothing substantial to analyze yet — stay silent
       const extraction: Extraction = adapter.extract(node);
       if (extraction.text.length < MIN_ANSWER_CHARS || extraction.text === lastText) return;
       lastText = extraction.text;

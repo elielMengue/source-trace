@@ -56,7 +56,6 @@ async def test_llm_claims_are_used_and_engine_records_model(monkeypatch):
 
 
 async def test_llm_relevance_propagates_to_source(monkeypatch):
-    monkeypatch.setattr("source_trace_api.pipeline.settings.llm_api_key", "test-key")
     links = [Link(url="https://nasa.gov", anchorText="NASA")]
     claim = LlmClaim(
         text="Rayleigh scattering makes the sky appear blue.",
@@ -65,9 +64,20 @@ async def test_llm_relevance_propagates_to_source(monkeypatch):
         matched_indexes=[0],
         relevance=Relevance.high,
     )
-    # Clear the key so no real network verification runs (network needs a key); the LLM
-    # path still runs (use_llm needs only full mode + extractor), so relevance still applies.
-    monkeypatch.setattr("source_trace_api.pipeline.settings.llm_api_key", None)
+    # Mock the network seam so the test stays offline (full mode now always verifies).
+    async def fake_verify(links, *, network):
+        return [
+            Source(
+                index=i,
+                url=link.url,
+                status=SourceStatus.unknown,
+                relevance=Relevance.unknown,
+                domain="nasa.gov",
+            )
+            for i, link in enumerate(links)
+        ]
+
+    monkeypatch.setattr("source_trace_api.pipeline.verify_links", fake_verify)
     report = await analyze(_request(links=links), extractor=FakeExtractor([claim]))
     assert report.sources[0].relevance == "high"
     assert report.claims[0].matchedSourceIndexes == [0]
@@ -84,10 +94,11 @@ async def test_positional_citation_verified_live_is_supported(monkeypatch):
     """The full-mode green path: a positional citation whose source verifies live turns
     its claim SUPPORTED. Network is mocked at the verify_links seam (the verifier's own
     SSRF/liveness behaviour is covered by test_verifier_ssrf)."""
-    monkeypatch.setattr("source_trace_api.pipeline.settings.llm_api_key", "test-key")
+    # No LLM key set: full mode still verifies liveness, so the green path works LLM-free.
+    monkeypatch.setattr("source_trace_api.pipeline.settings.llm_api_key", None)
 
     async def fake_verify(links, *, network):
-        assert network is True  # full mode + key -> network verification is on
+        assert network is True  # full mode -> network verification is on (key or not)
         return [
             Source(
                 index=i,

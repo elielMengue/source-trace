@@ -83,8 +83,13 @@ async def analyze(request: AnalyzeRequest, extractor: ClaimExtractor | None = No
     locale = request.context.locale
 
     # full mode may use the LLM + network; heuristics_only never leaves the browser (ADR-1).
+    # Liveness verification is a plain SSRF-guarded HEAD — no LLM, no spend — so it runs in
+    # full mode regardless of whether an LLM key is configured. This is what lets a cited,
+    # live source turn a claim "supported" (green) even before/without LLM extraction; the
+    # LLM only *enriches* extraction + relevance when a key is present. full mode is opt-in
+    # and consents to network calls, so verifying every visible source is exactly expected.
     use_llm = opts.mode == AnalyzeMode.full and extractor is not None
-    network = opts.mode == AnalyzeMode.full and settings.llm_api_key is not None
+    network = opts.mode == AnalyzeMode.full
 
     # Positional citations (Perplexity chips) carry their own URLs; fold them into the
     # source list so both matching paths and the sources output see every visible source.

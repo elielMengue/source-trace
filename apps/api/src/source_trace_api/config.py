@@ -41,7 +41,8 @@ class Settings(BaseSettings):
     cache_ttl_seconds: int = 7 * 24 * 3600  # 7d (§4.5)
     redis_url: str | None = None  # None -> in-memory cache (dev)
 
-    # LLM (full mode). Absent key -> full mode degrades to heuristics-only.
+    # LLM (full mode). Absent key -> full mode still verifies source liveness (the green
+    # path is LLM-free), but claim extraction/relevance degrades to the deterministic path.
     llm_api_key: str | None = None
     llm_model: str = "claude-opus-4-8"
 
